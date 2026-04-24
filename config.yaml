@@ -1,0 +1,5 @@
+
+# Data paths
+real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
+v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
+

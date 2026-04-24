@@ -1,7 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "eventsimilarityanalysis"
+name = "event-similarity-analysis"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "h5py>=3.16.0",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "pyyaml>=6.0.3",
+    "tqdm>=4.67.3",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "cupy-cuda12x>=14.0.1",
+    "nvidia-cublas-cu12>=12.9.2.10",
+    "nvidia-cuda-nvrtc-cu12>=12.9.86",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/event_data_toolbox",
+    "src/event_analysis_toolbox"
+    ]

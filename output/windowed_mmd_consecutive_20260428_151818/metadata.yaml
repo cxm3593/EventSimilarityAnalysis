@@ -1,0 +1,23 @@
+name: consecutive
+baseline:
+  start: 3000
+  end: 6000
+  n_events: 5606
+  source: real
+settings:
+  width: 3000
+  stride: 3000
+  n_real_windows: 99
+  n_v2e_windows: 100
+  real_window_start: 6000
+  v2e_window_start: 3000
+  mmd_kwargs:
+    chunk_size: 20000
+    sigma: 1.0
+    feature_names: null
+    feature_scales:
+      x: 1
+      y: 1
+      t: 1000
+    backend: cupy
+    progress: false

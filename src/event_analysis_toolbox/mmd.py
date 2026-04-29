@@ -9,6 +9,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 
 _POLARITY_FIELDS = {"p", "polarity", "pol"}
 _NVIDIA_CUDA_PACKAGES = ("nvidia.cuda_nvrtc", "nvidia.cublas")
+_CUDA_PATH_CONFIGURED = False
 
 
 class _NumpyBackend:
@@ -26,6 +27,14 @@ class _NumpyBackend:
 
 
 def _configure_cuda_path_from_python_packages():
+    # Idempotent: registering the same DLL directory many times on Windows
+    # eventually yields WinError 206 ("filename or extension too long"), so we
+    # only run this configuration once per process.
+    global _CUDA_PATH_CONFIGURED
+    if _CUDA_PATH_CONFIGURED:
+        return
+    _CUDA_PATH_CONFIGURED = True
+
     cuda_roots = []
 
     for package_name in _NVIDIA_CUDA_PACKAGES:
@@ -71,6 +80,24 @@ class _CupyBackend:
 
     def after_chunk_pair(self):
         self.xp.get_default_memory_pool().free_all_blocks()
+
+
+def _resolve_feature_scales(feature_scales, feature_names, default=1.0):
+    """Normalize ``feature_scales`` into a sequence aligned with ``feature_names``.
+
+    Accepts either a sequence (returned unchanged) or a ``{name: scale}`` mapping
+    (which is reordered to match ``feature_names`` and missing names get
+    ``default``). Returns ``None`` when ``feature_scales`` is ``None``.
+    """
+    if feature_scales is None:
+        return None
+
+    if isinstance(feature_scales, dict):
+        if feature_names is None:
+            raise ValueError("feature_scales as a mapping requires named feature_names.")
+        return tuple(float(feature_scales.get(name, default)) for name in feature_names)
+
+    return feature_scales
 
 
 def _resolve_backend(backend):
@@ -274,7 +301,10 @@ def mmd_analysis(
         gamma: RBF kernel coefficient. If None, uses 1 / (2 * sigma ** 2).
         feature_names: Optional structured-array fields to compare. Polarity fields
             are rejected if explicitly provided.
-        feature_scales: Optional per-feature scale factors applied before the kernel.
+        feature_scales: Optional per-feature divisors applied before the kernel
+            so axes with different units (e.g. pixels vs. microseconds) become
+            comparable. May be either a sequence aligned with ``feature_names``
+            or a mapping ``{feature_name: scale}`` (missing names default to 1).
         max_events: Optional cap on the number of events read from each input.
         biased: If True, use the biased MMD estimator. Otherwise use the unbiased
             estimator with self-kernel diagonals removed.
@@ -301,6 +331,8 @@ def mmd_analysis(
     if real_features != v2e_features:
         raise ValueError("real_data and v2e_data must have the same non-polarity fields.")
 
+    resolved_feature_scales = _resolve_feature_scales(feature_scales, real_features)
+
     n_real = min(len(real_data), max_events) if max_events is not None else len(real_data)
     n_v2e = min(len(v2e_data), max_events) if max_events is not None else len(v2e_data)
 
@@ -312,7 +344,7 @@ def mmd_analysis(
         chunk_size,
         max_events,
         real_features,
-        feature_scales,
+        resolved_feature_scales,
         gamma,
         biased,
         array_backend,
@@ -324,7 +356,7 @@ def mmd_analysis(
         chunk_size,
         max_events,
         v2e_features,
-        feature_scales,
+        resolved_feature_scales,
         gamma,
         biased,
         array_backend,
@@ -337,7 +369,7 @@ def mmd_analysis(
         chunk_size,
         max_events,
         real_features,
-        feature_scales,
+        resolved_feature_scales,
         gamma,
         array_backend,
         progress,
@@ -363,6 +395,7 @@ def mmd_analysis(
         "real_events": n_real,
         "v2e_events": n_v2e,
         "features": real_features,
+        "feature_scales": resolved_feature_scales,
         "gamma": gamma,
         "sigma": sigma_used,
         "chunk_size": chunk_size,

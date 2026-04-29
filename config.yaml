@@ -1,5 +1,28 @@
 
 # Data paths
-real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
-v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
+# real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
+# v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
 
+real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/real_event_undistorted_normalized.h5"
+v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/v2e_event_undistorted_normalized.h5"
+
+# Output directory for windowed MMD results (CSV / metadata / plot).
+output_dir: "output"
+
+# Per-feature divisors applied before the RBF kernel so spatial and temporal
+# distances are comparable. Each event coordinate is divided by its scale.
+# Convention here: 1000 us = 1 pixel (i.e. t / 1000 puts time in pixel units).
+feature_scales:
+  x: 1
+  y: 1
+  t: 1000
+
+# Each entry runs an independent windowed MMD analysis. `stride` is the spacing
+# (μs) between successive comparison-window starts: omit (or set null) to use
+# the baseline width (consecutive windows); set to a phase period to sample the
+# same phase across many cycles.
+window_schemes:
+  - name: consecutive
+    stride: null
+  - name: periodic
+    stride: 315000

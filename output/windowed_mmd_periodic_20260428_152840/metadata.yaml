@@ -1,0 +1,23 @@
+name: periodic
+baseline:
+  start: 30000
+  end: 60000
+  n_events: 71432
+  source: real
+settings:
+  width: 30000
+  stride: 315000
+  n_real_windows: 9
+  n_v2e_windows: 10
+  real_window_start: 345000
+  v2e_window_start: 30000
+  mmd_kwargs:
+    chunk_size: 20000
+    sigma: 1.0
+    feature_names: null
+    feature_scales:
+      x: 1
+      y: 1
+      t: 1000
+    backend: cupy
+    progress: false

@@ -1,3 +1,6 @@
+import datetime
+from pathlib import Path
+
 from event_data_toolbox.event_data_manager import EventDataManager
 from event_analysis_toolbox.windowed_mmd import (
     plot_windowed_mmd,
@@ -50,14 +53,21 @@ def _run_scheme(real_data, v2e_data, scheme, *, mmd_kwargs, output_dir):
             f"n={w['n_events']:>7}  MMD={w['mmd']:.6f}"
         )
 
-    paths = save_windowed_mmd_results(results, output_dir)
+    paths = save_windowed_mmd_results(
+        results,
+        output_dir,
+        run_name="",
+        file_prefix=name,
+    )
     print(f"Saved windowed MMD results to: {paths['dir']}")
     return results
 
 
 def main():
     config = load_config()
-    output_dir = config.get('output_dir', 'output')
+    output_root = Path(config.get('output_dir', 'output'))
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir = output_root / f"run_{timestamp}"
     schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
 
     event_data_manager = EventDataManager()
@@ -79,11 +89,20 @@ def main():
 
     mmd_kwargs = {
         "chunk_size": 20_000,
-        "sigma": 1.0,
+        "rbf_kernel_max_distance": config["rbf_kernel_max_distance"],
+        "rbf_kernel_target_similarity": config.get("rbf_kernel_target_similarity", 0.01),
         "feature_names": None,
         "feature_scales": config.get("feature_scales"),
         "backend": "cupy",
     }
+    print(
+        "RBF kernel max distance:",
+        mmd_kwargs["rbf_kernel_max_distance"],
+        (
+            f"(similarity <= {mmd_kwargs['rbf_kernel_target_similarity']} "
+            "beyond this scaled distance)"
+        ),
+    )
 
     all_results = []
     for scheme in schemes:
@@ -92,7 +111,7 @@ def main():
             v2e_data,
             scheme,
             mmd_kwargs=mmd_kwargs,
-            output_dir=output_dir,
+            output_dir=run_dir,
         )
         all_results.append(results)
 

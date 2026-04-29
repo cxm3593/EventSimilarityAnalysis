@@ -10,6 +10,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 _POLARITY_FIELDS = {"p", "polarity", "pol"}
 _NVIDIA_CUDA_PACKAGES = ("nvidia.cuda_nvrtc", "nvidia.cublas")
 _CUDA_PATH_CONFIGURED = False
+_DEFAULT_RBF_TARGET_SIMILARITY = 0.01
 
 
 class _NumpyBackend:
@@ -108,6 +109,54 @@ def _resolve_backend(backend):
         return _CupyBackend()
 
     raise ValueError(f"Unsupported backend: {backend}")
+
+
+def rbf_kernel_params_from_max_distance(
+    max_distance,
+    target_similarity=_DEFAULT_RBF_TARGET_SIMILARITY,
+):
+    """Compute RBF parameters for a target similarity at a max distance.
+
+    The RBF kernel is ``exp(-gamma * distance ** 2)`` and
+    ``gamma = 1 / (2 * sigma ** 2)``.
+    """
+    if max_distance <= 0:
+        raise ValueError("rbf_kernel_max_distance must be positive.")
+    if not 0 < target_similarity < 1:
+        raise ValueError("rbf_kernel_target_similarity must be between 0 and 1.")
+
+    log_drop = -math.log(target_similarity)
+    gamma = log_drop / (max_distance**2)
+    sigma = max_distance / math.sqrt(2.0 * log_drop)
+
+    return {
+        "gamma": gamma,
+        "sigma": sigma,
+        "max_distance": max_distance,
+        "target_similarity": target_similarity,
+    }
+
+
+def _resolve_rbf_kernel_params(
+    sigma,
+    gamma,
+    rbf_kernel_max_distance,
+    rbf_kernel_target_similarity,
+):
+    if rbf_kernel_max_distance is not None:
+        params = rbf_kernel_params_from_max_distance(
+            rbf_kernel_max_distance,
+            rbf_kernel_target_similarity,
+        )
+        return params["sigma"], params["gamma"], params
+
+    if gamma is None:
+        gamma = 1.0 / (2.0 * sigma**2)
+        sigma_used = sigma
+    else:
+        sigma_used = None
+
+    return sigma_used, gamma, None
 
 
 def _event_feature_names(dtype):
@@ -247,21 +296,37 @@ def _self_kernel_sum(
     return total
 
 
-def _validate_inputs(real_data, v2e_data, chunk_size, sigma, gamma, feature_names, max_events):
+def _validate_inputs(
+    real_data,
+    v2e_data,
+    chunk_size,
+    sigma,
+    gamma,
+    feature_names,
+    max_events,
+    rbf_kernel_max_distance,
+    rbf_kernel_target_similarity,
+):
     if len(real_data) == 0 or len(v2e_data) == 0:
         raise ValueError("Both inputs must contain at least one event.")
 
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive.")
 
-    if sigma is None and gamma is None:
-        raise ValueError("Pass either sigma or gamma.")
+    if sigma is None and gamma is None and rbf_kernel_max_distance is None:
+        raise ValueError("Pass sigma, gamma, or rbf_kernel_max_distance.")
 
     if sigma is not None and sigma <= 0:
         raise ValueError("sigma must be positive.")
 
     if gamma is not None and gamma <= 0:
         raise ValueError("gamma must be positive.")
+
+    if rbf_kernel_max_distance is not None and rbf_kernel_max_distance <= 0:
+        raise ValueError("rbf_kernel_max_distance must be positive.")
+
+    if not 0 < rbf_kernel_target_similarity < 1:
+        raise ValueError("rbf_kernel_target_similarity must be between 0 and 1.")
 
     if max_events is not None and max_events <= 0:
         raise ValueError("max_events must be positive.")
@@ -285,6 +350,8 @@ def mmd_analysis(
     biased=False,
     backend="numpy",
     progress=True,
+    rbf_kernel_max_distance=None,
+    rbf_kernel_target_similarity=_DEFAULT_RBF_TARGET_SIMILARITY,
 ):
     """
     Performs a chunked RBF-kernel MMD analysis between real and v2e event data.
@@ -310,18 +377,36 @@ def mmd_analysis(
             estimator with self-kernel diagonals removed.
         backend: Array backend to use for kernel math. Supports "numpy" and "cupy".
         progress: If True, show tqdm progress bars for each chunked kernel pass.
+        rbf_kernel_max_distance: Optional distance threshold used to derive the
+            RBF kernel bandwidth. If provided, gamma/sigma are computed so the
+            kernel similarity is ``rbf_kernel_target_similarity`` at this
+            distance and smaller beyond it. Distance is measured after applying
+            ``feature_scales``.
+        rbf_kernel_target_similarity: Target similarity at
+            ``rbf_kernel_max_distance``. Defaults to 0.01.
 
     Returns:
         A dictionary containing the MMD value, squared MMD value, kernel sums, and
         algorithm settings used for the comparison.
     """
-    _validate_inputs(real_data, v2e_data, chunk_size, sigma, gamma, feature_names, max_events)
+    _validate_inputs(
+        real_data,
+        v2e_data,
+        chunk_size,
+        sigma,
+        gamma,
+        feature_names,
+        max_events,
+        rbf_kernel_max_distance,
+        rbf_kernel_target_similarity,
+    )
 
-    if gamma is None:
-        gamma = 1.0 / (2.0 * sigma**2)
-        sigma_used = sigma
-    else:
-        sigma_used = None
+    sigma_used, gamma, rbf_kernel_params = _resolve_rbf_kernel_params(
+        sigma,
+        gamma,
+        rbf_kernel_max_distance,
+        rbf_kernel_target_similarity,
+    )
 
     array_backend = _resolve_backend(backend)
 
@@ -398,6 +483,7 @@ def mmd_analysis(
         "feature_scales": resolved_feature_scales,
         "gamma": gamma,
         "sigma": sigma_used,
+        "rbf_kernel_params": rbf_kernel_params,
         "chunk_size": chunk_size,
         "biased": biased,
         "backend": array_backend.name,

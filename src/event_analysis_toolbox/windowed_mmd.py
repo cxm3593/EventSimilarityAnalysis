@@ -44,6 +44,11 @@ def _yaml_safe(value):
     return repr(value)
 
 
+def _safe_file_stem(value: str) -> str:
+    stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in value.strip())
+    return stem.strip("_") or "results"
+
+
 class _SortedTimeIndexer:
     """Cache event timestamps once and slice windows via binary search.
 
@@ -272,27 +277,32 @@ def save_windowed_mmd_results(
     output_dir: str | Path,
     *,
     run_name: str | None = None,
+    file_prefix: str | None = None,
     save_plot: bool = True,
     show_plot: bool = False,
 ) -> dict[str, str]:
     """Persist a windowed MMD run as CSV + YAML metadata + (optionally) a PNG plot.
 
     Files are written to ``<output_dir>/<run_name>/``. If ``run_name`` is None,
-    a timestamped folder ``windowed_mmd_YYYYMMDD_HHMMSS`` is used.
+    a timestamped folder ``run_YYYYMMDD_HHMMSS`` is used. If
+    ``run_name`` is an empty string, files are written directly to ``output_dir``.
+    ``file_prefix`` can be used to keep multiple result sets in the same folder
+    without overwriting each other.
     """
     output_dir = Path(output_dir)
     if run_name is None:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         scheme_name = results.get("name")
         if scheme_name:
-            run_name = f"windowed_mmd_{scheme_name}_{timestamp}"
+            run_name = f"run_{scheme_name}_{timestamp}"
         else:
-            run_name = f"windowed_mmd_{timestamp}"
+            run_name = f"run_{timestamp}"
 
-    run_dir = output_dir / run_name
+    run_dir = output_dir if run_name == "" else output_dir / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    csv_path = run_dir / "results.csv"
+    stem = _safe_file_stem(file_prefix) if file_prefix else ""
+    csv_path = run_dir / (f"{stem}_results.csv" if stem else "results.csv")
     with csv_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -317,7 +327,7 @@ def save_windowed_mmd_results(
                 w["mmd"], w["mmd_squared"], w.get("status", ""),
             ])
 
-    yaml_path = run_dir / "metadata.yaml"
+    yaml_path = run_dir / (f"{stem}_metadata.yaml" if stem else "metadata.yaml")
     with yaml_path.open("w") as f:
         yaml.safe_dump(
             {
@@ -336,7 +346,7 @@ def save_windowed_mmd_results(
     }
 
     if save_plot:
-        plot_path = run_dir / "plot.png"
+        plot_path = run_dir / (f"{stem}_plot.png" if stem else "plot.png")
         plot_windowed_mmd(results, save_path=plot_path, show=show_plot)
         paths["plot"] = str(plot_path)
 

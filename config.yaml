@@ -1,13 +1,23 @@
 
 # Data paths
-real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
-v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
+# real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
+# v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
 
-# real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/real_event_undistorted_normalized.h5"
-# v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/v2e_event_undistorted_normalized.h5"
+real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/real_event_undistorted_normalized.h5"
+v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/v2e_event_undistorted_normalized.h5"
 
 # Output directory for windowed MMD results (CSV / metadata / plot).
 output_dir: "output"
+
+baseline_start: 1000
+baseline_end: 6000
+
+# Analysis modes to run for each window scheme. Available modes:
+#   - windowed: current baseline-vs-window MMD line plot
+#   - mds: all-to-all window MMD distance matrix + MDS embedding
+analysis_modes:
+  #- windowed
+  - mds
 
 # Per-feature divisors applied before the RBF kernel so spatial and temporal
 # distances are comparable. Each event coordinate is divided by its scale.
@@ -15,7 +25,7 @@ output_dir: "output"
 feature_scales:
   x: 1
   y: 1
-  t: 100
+  t: 30
 
 rbf_kernel_max_distance: 10 # kernel similarity reaches 0.01 at this distance
 
@@ -28,3 +38,7 @@ window_schemes:
     stride: null
   - name: periodic
     stride: 315000
+
+mds:
+  n_components: 2
+  annotate: false

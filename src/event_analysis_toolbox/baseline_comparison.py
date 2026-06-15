@@ -45,9 +45,6 @@ def _comparison_entry(
 
     result = metric_impl.compute(reference_events, chunk, **metric_kwargs)
     entry["distance"] = float(result.value)
-    squared = metric_impl.secondary_value(result)
-    if squared is not None:
-        entry["distance_squared"] = squared
     entry["status"] = "ok"
     return entry
 
@@ -97,7 +94,8 @@ def baseline_comparison(
         )
 
     inner_kwargs = dict(metric_kwargs or {})
-    inner_kwargs["progress"] = False
+    if metric_impl.supports_inner_progress:
+        inner_kwargs["progress"] = False
 
     real_results: list[dict[str, Any]] = []
     v2e_results: list[dict[str, Any]] = []

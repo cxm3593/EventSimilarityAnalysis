@@ -85,7 +85,8 @@ def all_to_all_comparison(
         raise ValueError("At least two non-empty windows are required for all-to-all comparison.")
 
     inner_kwargs = dict(metric_kwargs or {})
-    inner_kwargs["progress"] = False
+    if metric_impl.supports_inner_progress:
+        inner_kwargs["progress"] = False
     viz_kwargs = dict(visualizer_kwargs or {})
 
     n_windows = len(windows)

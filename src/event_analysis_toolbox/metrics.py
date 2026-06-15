@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, ClassVar
 
+from .chamfer_distance import chamfer_analysis
 from .mmd import mmd_analysis
 
 
@@ -50,9 +51,10 @@ class BaseMetric(ABC):
         """Optional human-readable lines printed before a comparison run."""
         return []
 
-    def secondary_value(self, result: MetricResult) -> float | None:
-        """Optional companion value (e.g. squared distance) for result tables."""
-        return None
+    @property
+    def supports_inner_progress(self) -> bool:
+        """Whether ``compute`` accepts a ``progress`` kwarg for nested tqdm bars."""
+        return False
 
 
 class MetricRegistry:
@@ -142,6 +144,10 @@ class MMDMetric(BaseMetric):
             f"(similarity <= {target_similarity} beyond this scaled distance)"
         ]
 
+    @property
+    def supports_inner_progress(self) -> bool:
+        return True
+
     def compute(self, window_a, window_b, **kwargs) -> MetricResult:
         raw = mmd_analysis(window_a, window_b, **kwargs)
         return MetricResult(value=float(raw["mmd"]), metadata=raw)
@@ -149,6 +155,41 @@ class MMDMetric(BaseMetric):
     def secondary_value(self, result: MetricResult) -> float | None:
         squared = result.metadata.get("mmd_squared")
         return float(squared) if squared is not None else None
+
+
+@register_metric
+class ChamferMetric(BaseMetric):
+    @property
+    def name(self) -> str:
+        return "chamfer"
+
+    @property
+    def type(self) -> MetricType:
+        return MetricType.DISTANCE
+
+    def build_kwargs(self, config: dict[str, Any]) -> dict[str, Any]:
+        chamfer_config = config.get("chamfer")
+        if not chamfer_config:
+            raise ValueError(
+                "config.yaml must define a 'chamfer' section when metric is 'chamfer'."
+            )
+        return {
+            **_shared_feature_kwargs(config),
+            "max_events": chamfer_config.get("max_events"),
+            "device": chamfer_config["device"],
+            "dtype": chamfer_config["dtype"],
+        }
+
+    def describe_settings(self, metric_kwargs: dict[str, Any]) -> list[str]:
+        return [
+            "Chamfer distance (Open3D): "
+            f"device={metric_kwargs['device']}, "
+            f"dtype={metric_kwargs['dtype']}"
+        ]
+
+    def compute(self, window_a, window_b, **kwargs) -> MetricResult:
+        raw = chamfer_analysis(window_a, window_b, **kwargs)
+        return MetricResult(value=float(raw["chamfer_distance"]), metadata=raw)
 
 
 # Populate the public alias after built-in metrics register themselves.

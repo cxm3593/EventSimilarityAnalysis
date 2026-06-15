@@ -12,8 +12,8 @@ output_dir: "output"
 baseline_start: 1000
 baseline_end: 6000
 
-# Distance metric used by all comparison strategies (currently only mmd).
-metric: mmd
+# Distance metric used by all comparison strategies (mmd, chamfer, ...).
+metric: chamfer
 
 # Comparison strategies to run for each window scheme:
 #   - baseline_comparison: one baseline vs many windows (line plot)
@@ -36,6 +36,12 @@ mmd:
   backend: cupy
   rbf_kernel_max_distance: 3
   rbf_kernel_target_similarity: 0.5
+
+# Chamfer-distance settings (used when metric is chamfer; requires Open3D).
+chamfer:
+  device: CPU:0
+  max_events: null
+  dtype: float32
 
 # Window sampling shared by comparison strategies.
 windows:

@@ -14,7 +14,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 from event_data_toolbox.event_windows_management import EventWindowsManager
 
 from .comparison_common import safe_file_stem, yaml_safe
-from .metrics import SUPPORTED_METRICS, compare_events
+from .metrics import BaseMetric, get_metric
 
 
 __all__ = [
@@ -24,7 +24,14 @@ __all__ = [
 ]
 
 
-def _comparison_entry(start: int, end: int, chunk, reference_events, metric: str, metric_kwargs):
+def _comparison_entry(
+    start: int,
+    end: int,
+    chunk,
+    reference_events,
+    metric_impl: BaseMetric,
+    metric_kwargs,
+):
     entry: dict[str, Any] = {
         "start": int(start),
         "end": int(end),
@@ -36,10 +43,11 @@ def _comparison_entry(start: int, end: int, chunk, reference_events, metric: str
         entry["status"] = "empty_or_too_small"
         return entry
 
-    result = compare_events(reference_events, chunk, metric=metric, **metric_kwargs)
-    entry["distance"] = float(result.get("mmd", result.get("distance", float("nan"))))
-    if "mmd_squared" in result:
-        entry["distance_squared"] = float(result["mmd_squared"])
+    result = metric_impl.compute(reference_events, chunk, **metric_kwargs)
+    entry["distance"] = float(result.value)
+    squared = metric_impl.secondary_value(result)
+    if squared is not None:
+        entry["distance_squared"] = squared
     entry["status"] = "ok"
     return entry
 
@@ -55,7 +63,7 @@ def baseline_comparison(
     stride: int | None = None,
     real_window_start: int | None = None,
     v2e_window_start: int | None = None,
-    metric: str = "mmd",
+    metric: str | BaseMetric = "mmd",
     metric_kwargs: dict | None = None,
     name: str | None = None,
     progress: bool = True,
@@ -63,13 +71,11 @@ def baseline_comparison(
     """Compare a baseline real window against multiple real and v2e windows.
 
     Args:
-        metric: Distance / similarity algorithm (currently ``"mmd"``).
+        metric: Registered distance / similarity metric name or instance.
         metric_kwargs: Algorithm-specific settings forwarded to the metric.
     """
-    if metric not in SUPPORTED_METRICS:
-        raise ValueError(
-            f"Unsupported metric: {metric!r}. Supported metrics: {sorted(SUPPORTED_METRICS)}"
-        )
+    metric_impl = get_metric(metric)
+    metric_name = metric_impl.name
 
     window_manager = EventWindowsManager(real_data, v2e_data)
     generated = window_manager.generate(
@@ -96,7 +102,7 @@ def baseline_comparison(
     real_results: list[dict[str, Any]] = []
     v2e_results: list[dict[str, Any]] = []
 
-    desc = f"Baseline comparison [{metric}]"
+    desc = f"Baseline comparison [{metric_name}]"
     if name:
         desc = f"{desc} {name}"
     total = len(generated["real"]) + len(generated["v2e"])
@@ -108,7 +114,7 @@ def baseline_comparison(
                     window.end,
                     window.events,
                     baseline_window.events,
-                    metric,
+                    metric_impl,
                     inner_kwargs,
                 )
             )
@@ -121,7 +127,7 @@ def baseline_comparison(
                     window.end,
                     window.events,
                     baseline_window.events,
-                    metric,
+                    metric_impl,
                     inner_kwargs,
                 )
             )
@@ -130,7 +136,7 @@ def baseline_comparison(
     return {
         "name": name,
         "strategy": "baseline_comparison",
-        "metric": metric,
+        "metric": metric_name,
         "baseline": {
             "start": baseline_window.start,
             "end": baseline_window.end,
@@ -141,7 +147,7 @@ def baseline_comparison(
         "v2e_windows": v2e_results,
         "settings": {
             **window_settings,
-            "metric": metric,
+            "metric": metric_name,
             "metric_kwargs": {str(k): yaml_safe(v) for k, v in inner_kwargs.items()},
         },
     }

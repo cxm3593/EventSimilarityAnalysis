@@ -12,6 +12,7 @@ from event_analysis_toolbox.baseline_comparison import (
     plot_baseline_comparison,
     save_baseline_comparison_results,
 )
+from event_analysis_toolbox.metrics import BaseMetric, get_metric
 import yaml  # pyright: ignore[reportMissingModuleSource]
 
 
@@ -47,14 +48,15 @@ def _run_baseline_scheme(
     baseline_end: int,
     n_real_windows: int,
     n_v2e_windows: int,
-    metric: str,
+    metric: str | BaseMetric,
     metric_kwargs,
     output_dir,
 ):
     name = scheme.get("name") or "scheme"
     stride = scheme.get("stride")
+    metric_label = get_metric(metric).name
 
-    print(f"\n=== Baseline comparison [{metric}] scheme: {name}  (stride={stride}) ===")
+    print(f"\n=== Baseline comparison [{metric_label}] scheme: {name}  (stride={stride}) ===")
 
     results = baseline_comparison(
         real_data=real_data,
@@ -104,13 +106,14 @@ def _run_all_to_all_scheme(
     baseline_end: int,
     n_real_windows: int,
     n_v2e_windows: int,
-    metric: str,
+    metric: str | BaseMetric,
     metric_kwargs,
     output_dir,
     all_to_all_config,
 ):
     name = scheme.get("name") or "scheme"
     stride = scheme.get("stride")
+    metric_label = get_metric(metric).name
     visualizer = all_to_all_config.get("visualizer", "mds")
     visualizer_kwargs = {
         k: v for k, v in all_to_all_config.items()
@@ -118,7 +121,7 @@ def _run_all_to_all_scheme(
     }
 
     print(
-        f"\n=== All-to-all comparison [{metric}] "
+        f"\n=== All-to-all comparison [{metric_label}] "
         f"(visualizer={visualizer}) scheme: {name}  (stride={stride}) ==="
     )
 
@@ -160,29 +163,6 @@ def _validate_comparison_modes(comparison_modes):
         )
 
 
-def _shared_feature_kwargs(config):
-    """Feature settings shared across distance / similarity metrics."""
-    return {
-        "feature_names": config.get("feature_names"),
-        "feature_scales": config.get("feature_scales"),
-    }
-
-
-def _build_metric_kwargs(config, metric: str):
-    if metric == "mmd":
-        mmd_config = config.get("mmd")
-        if not mmd_config:
-            raise ValueError("config.yaml must define an 'mmd' section when metric is 'mmd'.")
-        return {
-            **_shared_feature_kwargs(config),
-            "chunk_size": mmd_config["chunk_size"],
-            "rbf_kernel_max_distance": mmd_config["rbf_kernel_max_distance"],
-            "rbf_kernel_target_similarity": mmd_config["rbf_kernel_target_similarity"],
-            "backend": mmd_config["backend"],
-        }
-    raise ValueError(f"Unsupported metric: {metric!r}")
-
-
 def main():
     # --- Initialization ---
     config = load_config()
@@ -196,7 +176,7 @@ def main():
     comparison_modes = _normalize_comparison_modes(raw_modes or _DEFAULT_COMPARISON_MODES)
     _validate_comparison_modes(comparison_modes)
 
-    metric = config.get("metric", "mmd")
+    metric_impl = get_metric(config.get("metric", "mmd"))
     all_to_all_config = config.get("all_to_all") or config.get("mds") or {}
     windows_config = config.get("windows") or {}
     baseline_start = int(config["baseline_start"])
@@ -223,16 +203,9 @@ def main():
     )
 
     # --- Build metric arguments ---
-    metric_kwargs = _build_metric_kwargs(config, metric)
-    if metric == "mmd":
-        print(
-            "RBF kernel max distance:",
-            metric_kwargs["rbf_kernel_max_distance"],
-            (
-                f"(similarity <= {metric_kwargs['rbf_kernel_target_similarity']} "
-                "beyond this scaled distance)"
-            ),
-        )
+    metric_kwargs = metric_impl.build_kwargs(config)
+    for line in metric_impl.describe_settings(metric_kwargs):
+        print(line)
 
     # --- Run comparisons ---
     baseline_results = []
@@ -247,7 +220,7 @@ def main():
                 baseline_end=baseline_end,
                 n_real_windows=n_real_windows,
                 n_v2e_windows=n_v2e_windows,
-                metric=metric,
+                metric=metric_impl,
                 metric_kwargs=metric_kwargs,
                 output_dir=run_dir,
             )
@@ -262,7 +235,7 @@ def main():
                 baseline_end=baseline_end,
                 n_real_windows=n_real_windows,
                 n_v2e_windows=n_v2e_windows,
-                metric=metric,
+                metric=metric_impl,
                 metric_kwargs=metric_kwargs,
                 output_dir=run_dir,
                 all_to_all_config=all_to_all_config,

@@ -13,7 +13,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 from event_data_toolbox.event_windows_management import EventWindowsManager
 
 from .comparison_common import safe_file_stem, yaml_safe
-from .metrics import SUPPORTED_METRICS, compare_events
+from .metrics import BaseMetric, get_metric
 from .visualization_mds import classical_mds, plot_mds_embedding
 
 
@@ -26,8 +26,8 @@ __all__ = [
 SUPPORTED_VISUALIZERS = frozenset({"mds", None})
 
 
-def _distance_from_result(result: dict[str, Any]) -> float:
-    return float(result.get("mmd", result.get("distance", float("nan"))))
+def _distance_from_result(result) -> float:
+    return float(result.value)
 
 
 def all_to_all_comparison(
@@ -41,7 +41,7 @@ def all_to_all_comparison(
     stride: int | None = None,
     real_window_start: int | None = None,
     v2e_window_start: int | None = None,
-    metric: str = "mmd",
+    metric: str | BaseMetric = "mmd",
     metric_kwargs: dict | None = None,
     visualizer: str | None = "mds",
     visualizer_kwargs: dict | None = None,
@@ -51,15 +51,13 @@ def all_to_all_comparison(
     """Compute pairwise distances between all windows.
 
     Args:
-        metric: Distance / similarity algorithm (currently ``"mmd"``).
+        metric: Registered distance / similarity metric name or instance.
         metric_kwargs: Algorithm-specific settings forwarded to the metric.
         visualizer: Layout algorithm for the distance matrix (``"mds"`` or ``None``).
         visualizer_kwargs: Settings for the visualizer (e.g. ``n_components`` for MDS).
     """
-    if metric not in SUPPORTED_METRICS:
-        raise ValueError(
-            f"Unsupported metric: {metric!r}. Supported metrics: {sorted(SUPPORTED_METRICS)}"
-        )
+    metric_impl = get_metric(metric)
+    metric_name = metric_impl.name
     if visualizer not in SUPPORTED_VISUALIZERS:
         raise ValueError(
             f"Unsupported visualizer: {visualizer!r}. "
@@ -93,17 +91,16 @@ def all_to_all_comparison(
     n_windows = len(windows)
     distance_matrix = np.zeros((n_windows, n_windows), dtype=np.float64)
     total_pairs = n_windows * (n_windows - 1) // 2
-    desc = f"All-to-all [{metric}]"
+    desc = f"All-to-all [{metric_name}]"
     if name:
         desc = f"{desc} {name}"
 
     with tqdm(total=total_pairs, desc=desc, unit="pair", disable=not progress) as bar:
         for i in range(n_windows):
             for j in range(i + 1, n_windows):
-                result = compare_events(
+                result = metric_impl.compute(
                     windows[i].events,
                     windows[j].events,
-                    metric=metric,
                     **inner_kwargs,
                 )
                 distance = _distance_from_result(result)
@@ -126,7 +123,7 @@ def all_to_all_comparison(
     return {
         "name": name,
         "strategy": "all_to_all_comparison",
-        "metric": metric,
+        "metric": metric_name,
         "visualizer": visualizer,
         "windows": window_metadata,
         "skipped_windows": skipped_windows,
@@ -138,7 +135,7 @@ def all_to_all_comparison(
             "baseline_end": int(baseline_end),
             "n_real_windows": int(n_real_windows),
             "n_v2e_windows": int(n_v2e_windows),
-            "metric": metric,
+            "metric": metric_name,
             "visualizer": visualizer,
             "metric_kwargs": {str(k): yaml_safe(v) for k, v in inner_kwargs.items()},
             "visualizer_kwargs": {str(k): yaml_safe(v) for k, v in viz_kwargs.items()},

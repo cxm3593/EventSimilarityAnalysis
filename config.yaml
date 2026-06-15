@@ -1,10 +1,10 @@
 
 # Data paths
-# real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
-# v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
+real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
+v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
 
-real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/real_event_undistorted_normalized.h5"
-v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_synced/v2e_event_undistorted_normalized.h5"
+# real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/real_event_undistorted_normalized.h5"
+# v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/v2e_event_undistorted_normalized.h5"
 
 # Output directory for analysis results (CSV / metadata / plots).
 output_dir: "output"
@@ -19,8 +19,8 @@ metric: mmd
 #   - baseline_comparison: one baseline vs many windows (line plot)
 #   - all_to_all_comparison: pairwise distances + optional layout (MDS)
 comparison_modes:
-  #- baseline_comparison
-  - all_to_all_comparison
+  - baseline_comparison
+  #- all_to_all_comparison
 
 # Event feature representation shared by MMD, RSA, Chamfer, etc.
 # Per-feature divisors so spatial and temporal distances are comparable.
@@ -28,14 +28,14 @@ feature_names: null
 feature_scales:
   x: 1
   y: 1
-  t: 30
+  t: 100
 
 # MMD-specific settings (used when metric is mmd).
 mmd:
   chunk_size: 20000
   backend: cupy
-  rbf_kernel_max_distance: 10
-  rbf_kernel_target_similarity: 0.01
+  rbf_kernel_max_distance: 3
+  rbf_kernel_target_similarity: 0.5
 
 # Window sampling shared by comparison strategies.
 windows:

@@ -7,7 +7,6 @@ import numpy as np
 from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 
 
-_POLARITY_FIELDS = {"p", "polarity", "pol"}
 _NVIDIA_CUDA_PACKAGES = ("nvidia.cuda_nvrtc", "nvidia.cublas")
 _CUDA_PATH_CONFIGURED = False
 _DEFAULT_RBF_TARGET_SIMILARITY = 0.01
@@ -83,24 +82,6 @@ class _CupyBackend:
         self.xp.get_default_memory_pool().free_all_blocks()
 
 
-def _resolve_feature_scales(feature_scales, feature_names, default=1.0):
-    """Normalize ``feature_scales`` into a sequence aligned with ``feature_names``.
-
-    Accepts either a sequence (returned unchanged) or a ``{name: scale}`` mapping
-    (which is reordered to match ``feature_names`` and missing names get
-    ``default``). Returns ``None`` when ``feature_scales`` is ``None``.
-    """
-    if feature_scales is None:
-        return None
-
-    if isinstance(feature_scales, dict):
-        if feature_names is None:
-            raise ValueError("feature_scales as a mapping requires named feature_names.")
-        return tuple(float(feature_scales.get(name, default)) for name in feature_names)
-
-    return feature_scales
-
-
 def _resolve_backend(backend):
     if backend in (None, "numpy"):
         return _NumpyBackend()
@@ -159,57 +140,9 @@ def _resolve_rbf_kernel_params(
     return sigma_used, gamma, None
 
 
-def _event_feature_names(dtype):
-    if dtype.names is None:
-        return None
-
-    return tuple(name for name in dtype.names if name.lower() not in _POLARITY_FIELDS)
-
-
-def _data_feature_names(data):
-    dtype = getattr(data, "dtype", None)
-    if dtype is None:
-        return None
-
-    return _event_feature_names(dtype)
-
-
-def _event_chunk_to_features(events, feature_names=None, feature_scales=None, backend=None):
-    backend = backend or _NumpyBackend()
-    events = np.asarray(events)
-
-    if events.dtype.names is not None:
-        if feature_names is None:
-            feature_names = _event_feature_names(events.dtype)
-        features = np.column_stack([events[name] for name in feature_names])
-    else:
-        features = events
-        if features.ndim == 1:
-            features = features.reshape(-1, 1)
-
-    features = backend.asarray(features)
-
-    if feature_scales is not None:
-        features = features / backend.asarray(feature_scales)
-
-    return features
-
-
-def _iter_event_chunks(
-    data,
-    chunk_size,
-    max_events=None,
-    feature_names=None,
-    feature_scales=None,
-    backend=None,
-):
-    n_events = len(data)
-    if max_events is not None:
-        n_events = min(n_events, max_events)
-
-    for start in range(0, n_events, chunk_size):
-        stop = min(start + chunk_size, n_events)
-        yield _event_chunk_to_features(data[start:stop], feature_names, feature_scales, backend)
+def _iter_feature_chunks(features, chunk_size, backend):
+    for start in range(0, len(features), chunk_size):
+        yield backend.asarray(features[start:start + chunk_size])
 
 
 def _chunk_count(n_events, chunk_size):
@@ -227,21 +160,8 @@ def _rbf_kernel_sum(left, right, gamma, backend):
     return backend.to_float(xp.exp(-gamma * squared_distance).sum())
 
 
-def _kernel_sum(
-    data_a,
-    data_b,
-    chunk_size,
-    max_events,
-    feature_names,
-    feature_scales,
-    gamma,
-    backend,
-    progress,
-    description,
-):
-    n_a = min(len(data_a), max_events) if max_events is not None else len(data_a)
-    n_b = min(len(data_b), max_events) if max_events is not None else len(data_b)
-    total_chunk_pairs = _chunk_count(n_a, chunk_size) * _chunk_count(n_b, chunk_size)
+def _kernel_sum(data_a, data_b, chunk_size, gamma, backend, progress, description):
+    total_chunk_pairs = _chunk_count(len(data_a), chunk_size) * _chunk_count(len(data_b), chunk_size)
     total = 0.0
 
     with tqdm(
@@ -250,12 +170,8 @@ def _kernel_sum(
         unit="chunk-pair",
         disable=not progress,
     ) as progress_bar:
-        for chunk_a in _iter_event_chunks(
-            data_a, chunk_size, max_events, feature_names, feature_scales, backend
-        ):
-            for chunk_b in _iter_event_chunks(
-                data_b, chunk_size, max_events, feature_names, feature_scales, backend
-            ):
+        for chunk_a in _iter_feature_chunks(data_a, chunk_size, backend):
+            for chunk_b in _iter_feature_chunks(data_b, chunk_size, backend):
                 total += _rbf_kernel_sum(chunk_a, chunk_b, gamma, backend)
                 backend.after_chunk_pair()
                 progress_bar.update(1)
@@ -263,51 +179,26 @@ def _kernel_sum(
     return total
 
 
-def _self_kernel_sum(
-    data,
-    chunk_size,
-    max_events,
-    feature_names,
-    feature_scales,
-    gamma,
-    biased,
-    backend,
-    progress,
-    description,
-):
-    n_events = min(len(data), max_events) if max_events is not None else len(data)
-    total = _kernel_sum(
-        data,
-        data,
-        chunk_size,
-        max_events,
-        feature_names,
-        feature_scales,
-        gamma,
-        backend,
-        progress,
-        description,
-    )
+def _self_kernel_sum(data, chunk_size, gamma, biased, backend, progress, description):
+    total = _kernel_sum(data, data, chunk_size, gamma, backend, progress, description)
 
     if not biased:
         # The RBF value of every event with itself is 1.0, so remove the diagonal.
-        total -= n_events
+        total -= len(data)
 
     return total
 
 
 def _validate_inputs(
-    real_data,
-    v2e_data,
+    features_a,
+    features_b,
     chunk_size,
     sigma,
     gamma,
-    feature_names,
-    max_events,
     rbf_kernel_max_distance,
     rbf_kernel_target_similarity,
 ):
-    if len(real_data) == 0 or len(v2e_data) == 0:
+    if len(features_a) == 0 or len(features_b) == 0:
         raise ValueError("Both inputs must contain at least one event.")
 
     if chunk_size <= 0:
@@ -328,75 +219,53 @@ def _validate_inputs(
     if not 0 < rbf_kernel_target_similarity < 1:
         raise ValueError("rbf_kernel_target_similarity must be between 0 and 1.")
 
-    if max_events is not None and max_events <= 0:
-        raise ValueError("max_events must be positive.")
-
-    if feature_names is not None:
-        lowered = {name.lower() for name in feature_names}
-        if lowered & _POLARITY_FIELDS:
-            raise ValueError("feature_names must not include polarity fields.")
-
 
 def mmd_analysis(
-    real_data,
-    v2e_data,
+    features_a,
+    features_b,
     *,
     chunk_size=50_000,
     sigma=1.0,
     gamma=None,
-    feature_names=None,
-    feature_scales=None,
-    max_events=None,
     biased=False,
     backend="numpy",
     progress=True,
     rbf_kernel_max_distance=None,
     rbf_kernel_target_similarity=_DEFAULT_RBF_TARGET_SIMILARITY,
 ):
-    """
-    Performs a chunked RBF-kernel MMD analysis between real and v2e event data.
-
-    The event polarity field is ignored automatically for structured event arrays
-    with a field named "p", "polarity", or "pol".
+    """Perform a chunked RBF-kernel MMD analysis between two feature matrices.
 
     Args:
-        real_data: Real event data. Supports HDF5 datasets, structured arrays, or
-            plain array-like data.
-        v2e_data: V2E event data. Uses the same format as real_data.
-        chunk_size: Number of events to load per chunk while computing kernel sums.
+        features_a: ``(N, D)`` float array of features for the first window.
+        features_b: ``(M, D)`` float array of features for the second window.
+            Feature extraction, time normalization, and scaling are handled by
+            :mod:`event_analysis_toolbox.feature_preprocessing` before this call.
+        chunk_size: Number of events per chunk while computing kernel sums.
         sigma: RBF kernel bandwidth. Ignored when gamma is provided.
         gamma: RBF kernel coefficient. If None, uses 1 / (2 * sigma ** 2).
-        feature_names: Optional structured-array fields to compare. Polarity fields
-            are rejected if explicitly provided.
-        feature_scales: Optional per-feature divisors applied before the kernel
-            so axes with different units (e.g. pixels vs. microseconds) become
-            comparable. May be either a sequence aligned with ``feature_names``
-            or a mapping ``{feature_name: scale}`` (missing names default to 1).
-        max_events: Optional cap on the number of events read from each input.
         biased: If True, use the biased MMD estimator. Otherwise use the unbiased
             estimator with self-kernel diagonals removed.
-        backend: Array backend to use for kernel math. Supports "numpy" and "cupy".
+        backend: Array backend for kernel math. Supports "numpy" and "cupy".
         progress: If True, show tqdm progress bars for each chunked kernel pass.
         rbf_kernel_max_distance: Optional distance threshold used to derive the
-            RBF kernel bandwidth. If provided, gamma/sigma are computed so the
-            kernel similarity is ``rbf_kernel_target_similarity`` at this
-            distance and smaller beyond it. Distance is measured after applying
-            ``feature_scales``.
+            RBF kernel bandwidth so similarity is ``rbf_kernel_target_similarity``
+            at this distance and smaller beyond it.
         rbf_kernel_target_similarity: Target similarity at
             ``rbf_kernel_max_distance``. Defaults to 0.01.
 
     Returns:
-        A dictionary containing the MMD value, squared MMD value, kernel sums, and
+        A dictionary with the MMD value, squared MMD value, kernel sums, and the
         algorithm settings used for the comparison.
     """
+    features_a = np.ascontiguousarray(features_a, dtype=np.float64)
+    features_b = np.ascontiguousarray(features_b, dtype=np.float64)
+
     _validate_inputs(
-        real_data,
-        v2e_data,
+        features_a,
+        features_b,
         chunk_size,
         sigma,
         gamma,
-        feature_names,
-        max_events,
         rbf_kernel_max_distance,
         rbf_kernel_target_similarity,
     )
@@ -410,77 +279,40 @@ def mmd_analysis(
 
     array_backend = _resolve_backend(backend)
 
-    real_features = feature_names or _data_feature_names(real_data)
-    v2e_features = feature_names or _data_feature_names(v2e_data)
+    n_a = len(features_a)
+    n_b = len(features_b)
 
-    if real_features != v2e_features:
-        raise ValueError("real_data and v2e_data must have the same non-polarity fields.")
-
-    resolved_feature_scales = _resolve_feature_scales(feature_scales, real_features)
-
-    n_real = min(len(real_data), max_events) if max_events is not None else len(real_data)
-    n_v2e = min(len(v2e_data), max_events) if max_events is not None else len(v2e_data)
-
-    if not biased and (n_real < 2 or n_v2e < 2):
+    if not biased and (n_a < 2 or n_b < 2):
         raise ValueError("The unbiased MMD estimator requires at least two events per input.")
 
-    real_kernel_sum = _self_kernel_sum(
-        real_data,
-        chunk_size,
-        max_events,
-        real_features,
-        resolved_feature_scales,
-        gamma,
-        biased,
-        array_backend,
-        progress,
-        "MMD real-real",
+    a_kernel_sum = _self_kernel_sum(
+        features_a, chunk_size, gamma, biased, array_backend, progress, "MMD a-a"
     )
-    v2e_kernel_sum = _self_kernel_sum(
-        v2e_data,
-        chunk_size,
-        max_events,
-        v2e_features,
-        resolved_feature_scales,
-        gamma,
-        biased,
-        array_backend,
-        progress,
-        "MMD v2e-v2e",
+    b_kernel_sum = _self_kernel_sum(
+        features_b, chunk_size, gamma, biased, array_backend, progress, "MMD b-b"
     )
     cross_kernel_sum = _kernel_sum(
-        real_data,
-        v2e_data,
-        chunk_size,
-        max_events,
-        real_features,
-        resolved_feature_scales,
-        gamma,
-        array_backend,
-        progress,
-        "MMD real-v2e",
+        features_a, features_b, chunk_size, gamma, array_backend, progress, "MMD a-b"
     )
 
     if biased:
-        real_denominator = n_real * n_real
-        v2e_denominator = n_v2e * n_v2e
+        a_denominator = n_a * n_a
+        b_denominator = n_b * n_b
     else:
-        real_denominator = n_real * (n_real - 1)
-        v2e_denominator = n_v2e * (n_v2e - 1)
+        a_denominator = n_a * (n_a - 1)
+        b_denominator = n_b * (n_b - 1)
 
     mmd_squared = (
-        real_kernel_sum / real_denominator
-        + v2e_kernel_sum / v2e_denominator
-        - 2.0 * cross_kernel_sum / (n_real * n_v2e)
+        a_kernel_sum / a_denominator
+        + b_kernel_sum / b_denominator
+        - 2.0 * cross_kernel_sum / (n_a * n_b)
     )
 
     return {
         "mmd": math.sqrt(max(mmd_squared, 0.0)),
         "mmd_squared": mmd_squared,
-        "real_events": n_real,
-        "v2e_events": n_v2e,
-        "features": real_features,
-        "feature_scales": resolved_feature_scales,
+        "events_a": n_a,
+        "events_b": n_b,
         "gamma": gamma,
         "sigma": sigma_used,
         "rbf_kernel_params": rbf_kernel_params,
@@ -488,8 +320,8 @@ def mmd_analysis(
         "biased": biased,
         "backend": array_backend.name,
         "kernel_sums": {
-            "real": real_kernel_sum,
-            "v2e": v2e_kernel_sum,
+            "a": a_kernel_sum,
+            "b": b_kernel_sum,
             "cross": cross_kernel_sum,
         },
     }

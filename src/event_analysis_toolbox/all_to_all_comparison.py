@@ -13,6 +13,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 from event_data_toolbox.event_windows_management import EventWindowsManager
 
 from .comparison_common import safe_file_stem, yaml_safe
+from .feature_preprocessing import window_features
 from .metrics import BaseMetric, get_metric
 from .visualization_mds import classical_mds, plot_mds_embedding
 
@@ -43,6 +44,8 @@ def all_to_all_comparison(
     v2e_window_start: int | None = None,
     metric: str | BaseMetric = "mmd",
     metric_kwargs: dict | None = None,
+    feature_names=None,
+    feature_scales=None,
     visualizer: str | None = "mds",
     visualizer_kwargs: dict | None = None,
     name: str | None = None,
@@ -53,6 +56,8 @@ def all_to_all_comparison(
     Args:
         metric: Registered distance / similarity metric name or instance.
         metric_kwargs: Algorithm-specific settings forwarded to the metric.
+        feature_names: Optional event fields to compare (polarity always dropped).
+        feature_scales: Optional per-feature divisors applied during preprocessing.
         visualizer: Layout algorithm for the distance matrix (``"mds"`` or ``None``).
         visualizer_kwargs: Settings for the visualizer (e.g. ``n_components`` for MDS).
     """
@@ -89,6 +94,16 @@ def all_to_all_comparison(
         inner_kwargs["progress"] = False
     viz_kwargs = dict(visualizer_kwargs or {})
 
+    window_feature_arrays = [
+        window_features(
+            window.events,
+            feature_names=feature_names,
+            feature_scales=feature_scales,
+            time_origin=window.start,
+        )[0]
+        for window in windows
+    ]
+
     n_windows = len(windows)
     distance_matrix = np.zeros((n_windows, n_windows), dtype=np.float64)
     total_pairs = n_windows * (n_windows - 1) // 2
@@ -100,8 +115,8 @@ def all_to_all_comparison(
         for i in range(n_windows):
             for j in range(i + 1, n_windows):
                 result = metric_impl.compute(
-                    windows[i].events,
-                    windows[j].events,
+                    window_feature_arrays[i],
+                    window_feature_arrays[j],
                     **inner_kwargs,
                 )
                 distance = _distance_from_result(result)

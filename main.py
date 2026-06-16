@@ -50,6 +50,8 @@ def _run_baseline_scheme(
     n_v2e_windows: int,
     metric: str | BaseMetric,
     metric_kwargs,
+    feature_names,
+    feature_scales,
     output_dir,
 ):
     name = scheme.get("name") or "scheme"
@@ -68,6 +70,8 @@ def _run_baseline_scheme(
         stride=stride,
         metric=metric,
         metric_kwargs=metric_kwargs,
+        feature_names=feature_names,
+        feature_scales=feature_scales,
         name=name,
     )
 
@@ -108,6 +112,8 @@ def _run_all_to_all_scheme(
     n_v2e_windows: int,
     metric: str | BaseMetric,
     metric_kwargs,
+    feature_names,
+    feature_scales,
     output_dir,
     all_to_all_config,
 ):
@@ -135,6 +141,8 @@ def _run_all_to_all_scheme(
         stride=stride,
         metric=metric,
         metric_kwargs=metric_kwargs,
+        feature_names=feature_names,
+        feature_scales=feature_scales,
         visualizer=visualizer,
         visualizer_kwargs=visualizer_kwargs,
         name=name,
@@ -177,6 +185,8 @@ def main():
     _validate_comparison_modes(comparison_modes)
 
     metric_impl = get_metric(config.get("metric", "mmd"))
+    feature_names = config.get("feature_names")
+    feature_scales = config.get("feature_scales")
     all_to_all_config = config.get("all_to_all") or config.get("mds") or {}
     windows_config = config.get("windows") or {}
     baseline_start = int(config["baseline_start"])
@@ -222,6 +232,8 @@ def main():
                 n_v2e_windows=n_v2e_windows,
                 metric=metric_impl,
                 metric_kwargs=metric_kwargs,
+                feature_names=feature_names,
+                feature_scales=feature_scales,
                 output_dir=run_dir,
             )
             baseline_results.append(results)
@@ -237,6 +249,8 @@ def main():
                 n_v2e_windows=n_v2e_windows,
                 metric=metric_impl,
                 metric_kwargs=metric_kwargs,
+                feature_names=feature_names,
+                feature_scales=feature_scales,
                 output_dir=run_dir,
                 all_to_all_config=all_to_all_config,
             )

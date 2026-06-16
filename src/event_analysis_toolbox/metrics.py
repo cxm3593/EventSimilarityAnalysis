@@ -56,6 +56,10 @@ class BaseMetric(ABC):
         """Whether ``compute`` accepts a ``progress`` kwarg for nested tqdm bars."""
         return False
 
+    def secondary_value(self, result: MetricResult) -> float | None:
+        """Optional companion value (e.g. squared distance) for result tables."""
+        return None
+
 
 class MetricRegistry:
     _by_name: ClassVar[dict[str, BaseMetric]] = {}
@@ -104,13 +108,6 @@ def compare_events(
     return get_metric(metric).compute(events_a, events_b, **kwargs).to_legacy_dict()
 
 
-def _shared_feature_kwargs(config: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "feature_names": config.get("feature_names"),
-        "feature_scales": config.get("feature_scales"),
-    }
-
-
 @register_metric
 class MMDMetric(BaseMetric):
     @property
@@ -126,7 +123,6 @@ class MMDMetric(BaseMetric):
         if not mmd_config:
             raise ValueError("config.yaml must define an 'mmd' section when metric is 'mmd'.")
         return {
-            **_shared_feature_kwargs(config),
             "chunk_size": mmd_config["chunk_size"],
             "rbf_kernel_max_distance": mmd_config["rbf_kernel_max_distance"],
             "rbf_kernel_target_similarity": mmd_config["rbf_kernel_target_similarity"],
@@ -174,8 +170,6 @@ class ChamferMetric(BaseMetric):
                 "config.yaml must define a 'chamfer' section when metric is 'chamfer'."
             )
         return {
-            **_shared_feature_kwargs(config),
-            "max_events": chamfer_config.get("max_events"),
             "device": chamfer_config["device"],
             "dtype": chamfer_config["dtype"],
         }

@@ -14,6 +14,7 @@ from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 from event_data_toolbox.event_windows_management import EventWindowsManager
 
 from .comparison_common import safe_file_stem, yaml_safe
+from .feature_preprocessing import window_features
 from .metrics import BaseMetric, get_metric
 
 
@@ -25,26 +26,36 @@ __all__ = [
 
 
 def _comparison_entry(
-    start: int,
-    end: int,
-    chunk,
-    reference_events,
+    window,
+    baseline_features,
     metric_impl: BaseMetric,
     metric_kwargs,
+    *,
+    feature_names,
+    feature_scales,
 ):
     entry: dict[str, Any] = {
-        "start": int(start),
-        "end": int(end),
-        "n_events": int(len(chunk)),
+        "start": int(window.start),
+        "end": int(window.end),
+        "n_events": int(window.n_events),
     }
-    if len(chunk) < 2:
+    if window.n_events < 2:
         entry["distance"] = float("nan")
         entry["distance_squared"] = float("nan")
         entry["status"] = "empty_or_too_small"
         return entry
 
-    result = metric_impl.compute(reference_events, chunk, **metric_kwargs)
+    features, _ = window_features(
+        window.events,
+        feature_names=feature_names,
+        feature_scales=feature_scales,
+        time_origin=window.start,
+    )
+    result = metric_impl.compute(baseline_features, features, **metric_kwargs)
     entry["distance"] = float(result.value)
+    secondary = metric_impl.secondary_value(result)
+    if secondary is not None:
+        entry["distance_squared"] = float(secondary)
     entry["status"] = "ok"
     return entry
 
@@ -62,6 +73,8 @@ def baseline_comparison(
     v2e_window_start: int | None = None,
     metric: str | BaseMetric = "mmd",
     metric_kwargs: dict | None = None,
+    feature_names=None,
+    feature_scales=None,
     name: str | None = None,
     progress: bool = True,
 ) -> dict[str, Any]:
@@ -70,6 +83,8 @@ def baseline_comparison(
     Args:
         metric: Registered distance / similarity metric name or instance.
         metric_kwargs: Algorithm-specific settings forwarded to the metric.
+        feature_names: Optional event fields to compare (polarity always dropped).
+        feature_scales: Optional per-feature divisors applied during preprocessing.
     """
     metric_impl = get_metric(metric)
     metric_name = metric_impl.name
@@ -97,6 +112,13 @@ def baseline_comparison(
     if metric_impl.supports_inner_progress:
         inner_kwargs["progress"] = False
 
+    baseline_features, _ = window_features(
+        baseline_window.events,
+        feature_names=feature_names,
+        feature_scales=feature_scales,
+        time_origin=baseline_window.start,
+    )
+
     real_results: list[dict[str, Any]] = []
     v2e_results: list[dict[str, Any]] = []
 
@@ -108,12 +130,12 @@ def baseline_comparison(
         for window in generated["real"]:
             real_results.append(
                 _comparison_entry(
-                    window.start,
-                    window.end,
-                    window.events,
-                    baseline_window.events,
+                    window,
+                    baseline_features,
                     metric_impl,
                     inner_kwargs,
+                    feature_names=feature_names,
+                    feature_scales=feature_scales,
                 )
             )
             bar.update(1)
@@ -121,12 +143,12 @@ def baseline_comparison(
         for window in generated["v2e"]:
             v2e_results.append(
                 _comparison_entry(
-                    window.start,
-                    window.end,
-                    window.events,
-                    baseline_window.events,
+                    window,
+                    baseline_features,
                     metric_impl,
                     inner_kwargs,
+                    feature_names=feature_names,
+                    feature_scales=feature_scales,
                 )
             )
             bar.update(1)

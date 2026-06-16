@@ -13,6 +13,7 @@ baseline_start: 1000
 baseline_end: 6000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
+# available metrics: mmd, chamfer
 metric: chamfer
 
 # Comparison strategies to run for each window scheme:
@@ -22,13 +23,15 @@ comparison_modes:
   - baseline_comparison
   #- all_to_all_comparison
 
-# Event feature representation shared by MMD, RSA, Chamfer, etc.
-# Per-feature divisors so spatial and temporal distances are comparable.
+# Event feature representation shared by all metrics (MMD, Chamfer, ...).
+# Applied during a single preprocessing step per window: polarity is dropped, the
+# time axis is shifted so each window starts at t=0, then each feature is divided
+# by its scale so spatial and temporal distances are comparable.
 feature_names: null
 feature_scales:
   x: 1
   y: 1
-  t: 100
+  t: 42
 
 # MMD-specific settings (used when metric is mmd).
 mmd:
@@ -40,7 +43,6 @@ mmd:
 # Chamfer-distance settings (used when metric is chamfer; requires Open3D).
 chamfer:
   device: CPU:0
-  max_events: null
   dtype: float32
 
 # Window sampling shared by comparison strategies.

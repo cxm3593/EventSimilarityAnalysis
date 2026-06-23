@@ -1,6 +1,8 @@
 import datetime
 from pathlib import Path
 
+import numpy as np
+
 from event_data_toolbox.event_data_manager import EventDataManager
 from event_analysis_toolbox.all_to_all_comparison import (
     all_to_all_comparison,
@@ -12,6 +14,7 @@ from event_analysis_toolbox.baseline_comparison import (
     plot_baseline_comparison,
     save_baseline_comparison_results,
 )
+from event_analysis_toolbox.event_modifiers import build_pipelines
 from event_analysis_toolbox.metrics import BaseMetric, get_metric
 import yaml  # pyright: ignore[reportMissingModuleSource]
 
@@ -52,6 +55,10 @@ def _run_baseline_scheme(
     metric_kwargs,
     feature_names,
     feature_scales,
+    modifier_pipelines,
+    sensor,
+    rng,
+    seed,
     output_dir,
 ):
     name = scheme.get("name") or "scheme"
@@ -72,6 +79,10 @@ def _run_baseline_scheme(
         metric_kwargs=metric_kwargs,
         feature_names=feature_names,
         feature_scales=feature_scales,
+        modifier_pipelines=modifier_pipelines,
+        sensor=sensor,
+        rng=rng,
+        seed=seed,
         name=name,
     )
 
@@ -90,6 +101,12 @@ def _run_baseline_scheme(
             f"  v2e  [{w['start']:>9}, {w['end']:>9}] μs  "
             f"n={w['n_events']:>7}  distance={w['distance']:.6f}"
         )
+    for variant, entries in results.get("modified_real_windows", {}).items():
+        for w in entries:
+            print(
+                f"  real[{variant}] [{w['start']:>9}, {w['end']:>9}] μs  "
+                f"n={w['n_events']:>7}  distance={w['distance']:.6f}"
+            )
 
     paths = save_baseline_comparison_results(
         results,
@@ -187,6 +204,10 @@ def main():
     metric_impl = get_metric(config.get("metric", "mmd"))
     feature_names = config.get("feature_names")
     feature_scales = config.get("feature_scales")
+    seed = config.get("seed")
+    sensor = config.get("sensor")
+    modifier_pipelines = build_pipelines(config.get("modifiers"))
+    rng = np.random.default_rng(seed)
     all_to_all_config = config.get("all_to_all") or config.get("mds") or {}
     windows_config = config.get("windows") or {}
     baseline_start = int(config["baseline_start"])
@@ -234,6 +255,10 @@ def main():
                 metric_kwargs=metric_kwargs,
                 feature_names=feature_names,
                 feature_scales=feature_scales,
+                modifier_pipelines=modifier_pipelines,
+                sensor=sensor,
+                rng=rng,
+                seed=seed,
                 output_dir=run_dir,
             )
             baseline_results.append(results)

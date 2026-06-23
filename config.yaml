@@ -9,12 +9,12 @@ v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_und
 # Output directory for analysis results (CSV / metadata / plots).
 output_dir: "output"
 
-baseline_start: 1000
-baseline_end: 6000
+baseline_start: 5000
+baseline_end: 10000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
 # available metrics: mmd, chamfer
-metric: chamfer
+metric: mmd
 
 # Comparison strategies to run for each window scheme:
 #   - baseline_comparison: one baseline vs many windows (line plot)
@@ -37,13 +37,49 @@ feature_scales:
 mmd:
   chunk_size: 20000
   backend: cupy
-  rbf_kernel_max_distance: 3
+  rbf_kernel_max_distance: 90
   rbf_kernel_target_similarity: 0.5
 
 # Chamfer-distance settings (used when metric is chamfer; requires Open3D).
 chamfer:
   device: CPU:0
   dtype: float32
+
+# Random seed for reproducible data modifiers.
+seed: 0
+
+# Sensor resolution (pixels) for the add_noise modifier's spatial bounds.
+sensor:
+  width: 1280
+  height: 720
+
+# Data modifiers applied to real comparison windows after windowing, in original
+# physical units (before feature scaling). Each pipeline adds one
+# distance-to-baseline curve in its own color. Leave empty (modifiers: []) to
+# disable. Each named entry defines either:
+#   * steps: an ordered list of modifiers composed into ONE curve, or
+#   * sweep: a single modifier whose list-valued params expand into one curve
+#            per value (cartesian product if several lists are given).
+# Available step types:
+#   - {type: add_noise, count: 500}                         # uniform noise events
+#   - {type: subsample, ratio: 0.5, method: random}         # method: random | uniform
+#   - {type: jitter, range: {x: 1, y: 1, t: 50}, selection_ratio: 0.3}
+#   - {type: transform, offset: {x: 5, y: 0, t: 0}}
+#   - {type: scaling, scale: {x: 1.05, y: 1.05, t: 1.0}}
+modifiers:
+  - name: noise
+    sweep: {type: add_noise, count: [1000, 5000, 10000, 15000]}
+  - name: subsample
+    sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
+  - name: jittered
+    steps:
+      - {type: jitter, range: {x: 1, y: 1, t: 50}, selection_ratio: 1}
+  - name: jittered2
+    steps:
+      - {type: jitter, range: {x: 2, y: 2, t: 100}, selection_ratio: 1}
+  - name: jittered3
+    steps:
+      - {type: jitter, range: {x: 3, y: 3, t: 150}, selection_ratio: 1}
 
 # Window sampling shared by comparison strategies.
 windows:

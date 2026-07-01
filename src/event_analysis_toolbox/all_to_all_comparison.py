@@ -106,6 +106,9 @@ def all_to_all_comparison(
 
     n_windows = len(windows)
     distance_matrix = np.zeros((n_windows, n_windows), dtype=np.float64)
+    kernel_distance_matrices: list[np.ndarray] = []
+    kernel_distance_squared_matrices: list[np.ndarray] = []
+    kernel_metadata: list[dict[str, Any]] = []
     total_pairs = n_windows * (n_windows - 1) // 2
     desc = f"All-to-all [{metric_name}]"
     if name:
@@ -122,6 +125,32 @@ def all_to_all_comparison(
                 distance = _distance_from_result(result)
                 distance_matrix[i, j] = distance
                 distance_matrix[j, i] = distance
+                kernels = result.metadata.get("kernels", [])
+                if kernels and not kernel_distance_matrices:
+                    kernel_distance_matrices = [
+                        np.zeros((n_windows, n_windows), dtype=np.float64)
+                        for _ in kernels
+                    ]
+                    kernel_distance_squared_matrices = [
+                        np.zeros((n_windows, n_windows), dtype=np.float64)
+                        for _ in kernels
+                    ]
+                    kernel_metadata = [
+                        {
+                            key: value
+                            for key, value in kernel.items()
+                            if key not in ("mmd", "mmd_squared", "kernel_sums")
+                        }
+                        for kernel in kernels
+                    ]
+                for kernel_index, kernel in enumerate(kernels):
+                    kernel_distance = float(kernel.get("mmd", np.nan))
+                    kernel_distance_squared = float(kernel.get("mmd_squared", np.nan))
+                    kernel_distance_matrices[kernel_index][i, j] = kernel_distance
+                    kernel_distance_matrices[kernel_index][j, i] = kernel_distance
+                    squared_matrix = kernel_distance_squared_matrices[kernel_index]
+                    squared_matrix[i, j] = kernel_distance_squared
+                    squared_matrix[j, i] = kernel_distance_squared
                 bar.update(1)
 
     embedding = None
@@ -144,6 +173,9 @@ def all_to_all_comparison(
         "windows": window_metadata,
         "skipped_windows": skipped_windows,
         "distance_matrix": distance_matrix,
+        "kernel_distance_matrices": kernel_distance_matrices,
+        "kernel_distance_squared_matrices": kernel_distance_squared_matrices,
+        "kernel_metadata": kernel_metadata,
         "embedding": embedding,
         "settings": {
             **window_settings,
@@ -238,6 +270,30 @@ def save_all_to_all_comparison_results(
         for label, row in zip(labels, np.asarray(results["distance_matrix"])):
             writer.writerow([label, *[float(value) for value in row]])
 
+    kernel_matrix_paths = []
+    for kernel_index, matrix in enumerate(results.get("kernel_distance_matrices", [])):
+        kernel_matrix_path = run_dir / f"{stem}_kernel_{kernel_index}_distance_matrix.csv"
+        with kernel_matrix_path.open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["window_id", *labels])
+            for label, row in zip(labels, np.asarray(matrix)):
+                writer.writerow([label, *[float(value) for value in row]])
+        kernel_matrix_paths.append(str(kernel_matrix_path))
+
+    kernel_squared_matrix_paths = []
+    for kernel_index, matrix in enumerate(
+        results.get("kernel_distance_squared_matrices", [])
+    ):
+        kernel_matrix_path = (
+            run_dir / f"{stem}_kernel_{kernel_index}_distance_squared_matrix.csv"
+        )
+        with kernel_matrix_path.open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["window_id", *labels])
+            for label, row in zip(labels, np.asarray(matrix)):
+                writer.writerow([label, *[float(value) for value in row]])
+        kernel_squared_matrix_paths.append(str(kernel_matrix_path))
+
     metadata_path = run_dir / f"{stem}_metadata.yaml"
     with metadata_path.open("w") as f:
         yaml.safe_dump(
@@ -247,6 +303,7 @@ def save_all_to_all_comparison_results(
                 "metric": results.get("metric"),
                 "visualizer": results.get("visualizer"),
                 "settings": results["settings"],
+                "kernels": yaml_safe(results.get("kernel_metadata", [])),
                 "skipped_windows": results.get("skipped_windows", []),
             },
             f,
@@ -259,6 +316,10 @@ def save_all_to_all_comparison_results(
         "distance_matrix": str(matrix_path),
         "metadata": str(metadata_path),
     }
+    if kernel_matrix_paths:
+        paths["kernel_distance_matrices"] = kernel_matrix_paths
+    if kernel_squared_matrix_paths:
+        paths["kernel_distance_squared_matrices"] = kernel_squared_matrix_paths
 
     if save_plot and results.get("visualizer") == "mds":
         plot_path = run_dir / f"{stem}_plot.png"

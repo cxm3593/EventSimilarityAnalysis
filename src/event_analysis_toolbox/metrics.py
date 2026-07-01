@@ -123,22 +123,32 @@ class MMDMetric(BaseMetric):
         if not mmd_config:
             raise ValueError("config.yaml must define an 'mmd' section when metric is 'mmd'.")
         return {
+            "biased": mmd_config.get("biased", False),
             "chunk_size": mmd_config["chunk_size"],
-            "rbf_kernel_max_distance": mmd_config["rbf_kernel_max_distance"],
-            "rbf_kernel_target_similarity": mmd_config["rbf_kernel_target_similarity"],
+            "kernels": mmd_config["kernels"],
+            "weight_method": mmd_config.get("weight_method", "uniform"),
             "backend": mmd_config["backend"],
         }
 
     def describe_settings(self, metric_kwargs: dict[str, Any]) -> list[str]:
-        max_distance = metric_kwargs.get("rbf_kernel_max_distance")
-        target_similarity = metric_kwargs.get("rbf_kernel_target_similarity")
-        if max_distance is None:
-            return []
-        return [
-            "RBF kernel max distance: "
-            f"{max_distance} "
-            f"(similarity <= {target_similarity} beyond this scaled distance)"
+        lines = [
+            "MMD estimator: "
+            f"{'biased' if metric_kwargs.get('biased') else 'unbiased'}"
         ]
+        kernels = metric_kwargs.get("kernels", [])
+        lines.append(
+            "MMD kernels: "
+            f"{len(kernels)} RBF kernel{'s' if len(kernels) != 1 else ''}; "
+            f"weight_method={metric_kwargs.get('weight_method', 'uniform')}"
+        )
+        for index, kernel in enumerate(kernels):
+            lines.append(
+                f"  kernel {index}: "
+                f"max_distance={kernel['rbf_kernel_max_distance']}, "
+                f"target_similarity="
+                f"{kernel.get('rbf_kernel_target_similarity', 0.01)}"
+            )
+        return lines
 
     @property
     def supports_inner_progress(self) -> bool:

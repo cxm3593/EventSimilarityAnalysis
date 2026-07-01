@@ -47,6 +47,7 @@ def _distance_entry(
     if len(events) < 2:
         entry["distance"] = float("nan")
         entry["distance_squared"] = float("nan")
+        entry["kernel_results"] = []
         entry["status"] = "empty_or_too_small"
         return entry
 
@@ -61,6 +62,7 @@ def _distance_entry(
     secondary = metric_impl.secondary_value(result)
     if secondary is not None:
         entry["distance_squared"] = float(secondary)
+    entry["kernel_results"] = result.metadata.get("kernels", [])
     entry["status"] = "ok"
     return entry
 
@@ -355,6 +357,62 @@ def save_baseline_comparison_results(
             _write_rows("real_vs_real", variant, entries)
         _write_rows("v2e_vs_real", "original", results.get("v2e_windows", []))
 
+    kernel_csv_path = run_dir / (
+        f"{stem}_baseline_kernel_results.csv"
+        if stem else "baseline_kernel_results.csv"
+    )
+    wrote_kernel_csv = False
+    with kernel_csv_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "comparison_set",
+            "variant",
+            "window_start",
+            "window_end",
+            "n_events",
+            "kernel_index",
+            "rbf_kernel_max_distance",
+            "rbf_kernel_target_similarity",
+            "weight_method",
+            "weight",
+            "mmd",
+            "mmd_squared",
+            "status",
+        ])
+
+        def _write_kernel_rows(comparison_set, variant, entries):
+            nonlocal wrote_kernel_csv
+            for w in entries:
+                for kernel in w.get("kernel_results", []):
+                    wrote_kernel_csv = True
+                    params = kernel.get("rbf_kernel_params", {})
+                    writer.writerow([
+                        comparison_set,
+                        variant,
+                        w["start"],
+                        w["end"],
+                        w["n_events"],
+                        kernel.get("index", ""),
+                        params.get("max_distance", kernel.get("rbf_kernel_max_distance", "")),
+                        params.get(
+                            "target_similarity",
+                            kernel.get("rbf_kernel_target_similarity", ""),
+                        ),
+                        kernel.get("weight_method", ""),
+                        kernel.get("weight", ""),
+                        kernel.get("mmd", ""),
+                        kernel.get("mmd_squared", ""),
+                        w.get("status", ""),
+                    ])
+
+        _write_kernel_rows("real_vs_real", "original", results.get("real_windows", []))
+        for variant, entries in results.get("modified_real_windows", {}).items():
+            _write_kernel_rows("real_vs_real", variant, entries)
+        _write_kernel_rows("v2e_vs_real", "original", results.get("v2e_windows", []))
+
+    if not wrote_kernel_csv:
+        kernel_csv_path.unlink(missing_ok=True)
+
     yaml_path = run_dir / (f"{stem}_baseline_metadata.yaml" if stem else "baseline_metadata.yaml")
     with yaml_path.open("w") as f:
         yaml.safe_dump(
@@ -375,6 +433,8 @@ def save_baseline_comparison_results(
         "csv": str(csv_path),
         "metadata": str(yaml_path),
     }
+    if wrote_kernel_csv:
+        paths["kernel_csv"] = str(kernel_csv_path)
 
     if save_plot:
         plot_path = run_dir / (f"{stem}_baseline_plot.png" if stem else "baseline_plot.png")

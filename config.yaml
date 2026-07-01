@@ -35,10 +35,19 @@ feature_scales:
 
 # MMD-specific settings (used when metric is mmd).
 mmd:
+  # false = unbiased estimator (diagonal removed); true = biased estimator.
+  biased: true
   chunk_size: 20000
   backend: cupy
-  rbf_kernel_max_distance: 90
-  rbf_kernel_target_similarity: 0.5
+  weight_method: uniform
+  kernels:
+    - rbf_kernel_max_distance: 3
+      rbf_kernel_target_similarity: 0.5
+    - rbf_kernel_max_distance: 15
+      rbf_kernel_target_similarity: 0.5
+    - rbf_kernel_max_distance: 75
+      rbf_kernel_target_similarity: 0.5
+    
 
 # Chamfer-distance settings (used when metric is chamfer; requires Open3D).
 chamfer:
@@ -69,17 +78,17 @@ sensor:
 modifiers:
   - name: noise
     sweep: {type: add_noise, count: [1000, 5000, 10000, 15000]}
-  - name: subsample
-    sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
-  - name: jittered
-    steps:
-      - {type: jitter, range: {x: 1, y: 1, t: 50}, selection_ratio: 1}
-  - name: jittered2
-    steps:
-      - {type: jitter, range: {x: 2, y: 2, t: 100}, selection_ratio: 1}
-  - name: jittered3
-    steps:
-      - {type: jitter, range: {x: 3, y: 3, t: 150}, selection_ratio: 1}
+  # - name: subsample
+  #   sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
+  # - name: jittered
+  #   steps:
+  #     - {type: jitter, range: {x: 1, y: 1, t: 50}, selection_ratio: 1}
+  # - name: jittered2
+  #   steps:
+  #     - {type: jitter, range: {x: 2, y: 2, t: 100}, selection_ratio: 1}
+  # - name: jittered3
+  #   steps:
+  #     - {type: jitter, range: {x: 3, y: 3, t: 150}, selection_ratio: 1}
 
 # Window sampling shared by comparison strategies.
 windows:

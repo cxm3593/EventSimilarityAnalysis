@@ -140,6 +140,86 @@ def _resolve_rbf_kernel_params(
     return sigma_used, gamma, None
 
 
+def _resolve_mmd_kernels(
+    kernels,
+    sigma,
+    gamma,
+    rbf_kernel_max_distance,
+    rbf_kernel_target_similarity,
+):
+    if kernels is None:
+        if rbf_kernel_max_distance is None:
+            sigma_used, gamma_used, rbf_kernel_params = _resolve_rbf_kernel_params(
+                sigma,
+                gamma,
+                None,
+                rbf_kernel_target_similarity,
+            )
+            return [{
+                "index": 0,
+                "gamma": gamma_used,
+                "sigma": sigma_used,
+                "rbf_kernel_params": rbf_kernel_params,
+                "rbf_kernel_max_distance": None,
+                "rbf_kernel_target_similarity": None,
+            }]
+        kernels = [{
+            "rbf_kernel_max_distance": rbf_kernel_max_distance,
+            "rbf_kernel_target_similarity": rbf_kernel_target_similarity,
+        }]
+
+    if not kernels:
+        raise ValueError("MMD requires at least one RBF kernel.")
+
+    resolved = []
+    for index, kernel in enumerate(kernels):
+        max_distance = kernel.get("rbf_kernel_max_distance")
+        target_similarity = kernel.get(
+            "rbf_kernel_target_similarity",
+            _DEFAULT_RBF_TARGET_SIMILARITY,
+        )
+        if max_distance is None:
+            raise ValueError(
+                "Each MMD kernel must define rbf_kernel_max_distance."
+            )
+
+        sigma_used, gamma_used, rbf_kernel_params = _resolve_rbf_kernel_params(
+            None,
+            None,
+            max_distance,
+            target_similarity,
+        )
+        resolved.append({
+            "index": index,
+            "gamma": gamma_used,
+            "sigma": sigma_used,
+            "rbf_kernel_params": rbf_kernel_params,
+            "rbf_kernel_max_distance": max_distance,
+            "rbf_kernel_target_similarity": target_similarity,
+        })
+
+    return resolved
+
+
+def _resolve_kernel_weights(kernels, weight_method):
+    if weight_method != "uniform":
+        raise ValueError(
+            f"Unsupported MMD weight_method: {weight_method!r}. "
+            "Supported methods: ['uniform']"
+        )
+
+    weight = 1.0 / len(kernels)
+    return [
+        {
+            **kernel,
+            "raw_weight": 1.0,
+            "weight": weight,
+            "weight_method": weight_method,
+        }
+        for kernel in kernels
+    ]
+
+
 def _iter_feature_chunks(features, chunk_size, backend):
     for start in range(0, len(features), chunk_size):
         yield backend.asarray(features[start:start + chunk_size])
@@ -149,20 +229,23 @@ def _chunk_count(n_events, chunk_size):
     return math.ceil(n_events / chunk_size)
 
 
-def _rbf_kernel_sum(left, right, gamma, backend):
+def _rbf_kernel_sums(left, right, kernels, backend):
     if left.size == 0 or right.size == 0:
-        return 0.0
+        return [0.0 for _ in kernels]
 
     xp = backend.xp
     left_norm = xp.sum(left * left, axis=1)[:, None]
     right_norm = xp.sum(right * right, axis=1)[None, :]
     squared_distance = xp.maximum(left_norm + right_norm - 2.0 * left @ right.T, 0.0)
-    return backend.to_float(xp.exp(-gamma * squared_distance).sum())
+    return [
+        backend.to_float(xp.exp(-kernel["gamma"] * squared_distance).sum())
+        for kernel in kernels
+    ]
 
 
-def _kernel_sum(data_a, data_b, chunk_size, gamma, backend, progress, description):
+def _kernel_sums(data_a, data_b, chunk_size, kernels, backend, progress, description):
     total_chunk_pairs = _chunk_count(len(data_a), chunk_size) * _chunk_count(len(data_b), chunk_size)
-    total = 0.0
+    totals = [0.0 for _ in kernels]
 
     with tqdm(
         total=total_chunk_pairs,
@@ -172,21 +255,25 @@ def _kernel_sum(data_a, data_b, chunk_size, gamma, backend, progress, descriptio
     ) as progress_bar:
         for chunk_a in _iter_feature_chunks(data_a, chunk_size, backend):
             for chunk_b in _iter_feature_chunks(data_b, chunk_size, backend):
-                total += _rbf_kernel_sum(chunk_a, chunk_b, gamma, backend)
+                chunk_totals = _rbf_kernel_sums(chunk_a, chunk_b, kernels, backend)
+                totals = [
+                    total + chunk_total
+                    for total, chunk_total in zip(totals, chunk_totals)
+                ]
                 backend.after_chunk_pair()
                 progress_bar.update(1)
 
-    return total
+    return totals
 
 
-def _self_kernel_sum(data, chunk_size, gamma, biased, backend, progress, description):
-    total = _kernel_sum(data, data, chunk_size, gamma, backend, progress, description)
+def _self_kernel_sums(data, chunk_size, kernels, biased, backend, progress, description):
+    totals = _kernel_sums(data, data, chunk_size, kernels, backend, progress, description)
 
     if not biased:
         # The RBF value of every event with itself is 1.0, so remove the diagonal.
-        total -= len(data)
+        totals = [total - len(data) for total in totals]
 
-    return total
+    return totals
 
 
 def _validate_inputs(
@@ -232,6 +319,8 @@ def mmd_analysis(
     progress=True,
     rbf_kernel_max_distance=None,
     rbf_kernel_target_similarity=_DEFAULT_RBF_TARGET_SIMILARITY,
+    kernels=None,
+    weight_method="uniform",
 ):
     """Perform a chunked RBF-kernel MMD analysis between two feature matrices.
 
@@ -252,6 +341,11 @@ def mmd_analysis(
             at this distance and smaller beyond it.
         rbf_kernel_target_similarity: Target similarity at
             ``rbf_kernel_max_distance``. Defaults to 0.01.
+        kernels: Optional list of RBF kernel settings. Each kernel must define
+            ``rbf_kernel_max_distance`` and may define
+            ``rbf_kernel_target_similarity``.
+        weight_method: Strategy used to combine per-kernel MMD values. Currently
+            supports ``"uniform"``.
 
     Returns:
         A dictionary with the MMD value, squared MMD value, kernel sums, and the
@@ -270,12 +364,14 @@ def mmd_analysis(
         rbf_kernel_target_similarity,
     )
 
-    sigma_used, gamma, rbf_kernel_params = _resolve_rbf_kernel_params(
+    resolved_kernels = _resolve_mmd_kernels(
+        kernels,
         sigma,
         gamma,
         rbf_kernel_max_distance,
         rbf_kernel_target_similarity,
     )
+    resolved_kernels = _resolve_kernel_weights(resolved_kernels, weight_method)
 
     array_backend = _resolve_backend(backend)
 
@@ -285,14 +381,14 @@ def mmd_analysis(
     if not biased and (n_a < 2 or n_b < 2):
         raise ValueError("The unbiased MMD estimator requires at least two events per input.")
 
-    a_kernel_sum = _self_kernel_sum(
-        features_a, chunk_size, gamma, biased, array_backend, progress, "MMD a-a"
+    a_kernel_sums = _self_kernel_sums(
+        features_a, chunk_size, resolved_kernels, biased, array_backend, progress, "MMD a-a"
     )
-    b_kernel_sum = _self_kernel_sum(
-        features_b, chunk_size, gamma, biased, array_backend, progress, "MMD b-b"
+    b_kernel_sums = _self_kernel_sums(
+        features_b, chunk_size, resolved_kernels, biased, array_backend, progress, "MMD b-b"
     )
-    cross_kernel_sum = _kernel_sum(
-        features_a, features_b, chunk_size, gamma, array_backend, progress, "MMD a-b"
+    cross_kernel_sums = _kernel_sums(
+        features_a, features_b, chunk_size, resolved_kernels, array_backend, progress, "MMD a-b"
     )
 
     if biased:
@@ -302,26 +398,60 @@ def mmd_analysis(
         a_denominator = n_a * (n_a - 1)
         b_denominator = n_b * (n_b - 1)
 
-    mmd_squared = (
-        a_kernel_sum / a_denominator
-        + b_kernel_sum / b_denominator
-        - 2.0 * cross_kernel_sum / (n_a * n_b)
+    kernel_results = []
+    for kernel, a_kernel_sum, b_kernel_sum, cross_kernel_sum in zip(
+        resolved_kernels,
+        a_kernel_sums,
+        b_kernel_sums,
+        cross_kernel_sums,
+    ):
+        kernel_mmd_squared = (
+            a_kernel_sum / a_denominator
+            + b_kernel_sum / b_denominator
+            - 2.0 * cross_kernel_sum / (n_a * n_b)
+        )
+        kernel_results.append({
+            **kernel,
+            "mmd": math.sqrt(max(kernel_mmd_squared, 0.0)),
+            "mmd_squared": kernel_mmd_squared,
+            "kernel_sums": {
+                "a": a_kernel_sum,
+                "b": b_kernel_sum,
+                "cross": cross_kernel_sum,
+            },
+        })
+
+    mmd_squared = sum(
+        kernel["weight"] * kernel["mmd_squared"]
+        for kernel in kernel_results
     )
+    first_kernel = kernel_results[0]
 
     return {
         "mmd": math.sqrt(max(mmd_squared, 0.0)),
         "mmd_squared": mmd_squared,
         "events_a": n_a,
         "events_b": n_b,
-        "gamma": gamma,
-        "sigma": sigma_used,
-        "rbf_kernel_params": rbf_kernel_params,
+        "gamma": first_kernel["gamma"],
+        "sigma": first_kernel["sigma"],
+        "rbf_kernel_params": first_kernel["rbf_kernel_params"],
         "chunk_size": chunk_size,
         "biased": biased,
+        "weight_method": weight_method,
         "backend": array_backend.name,
+        "kernels": kernel_results,
         "kernel_sums": {
-            "a": a_kernel_sum,
-            "b": b_kernel_sum,
-            "cross": cross_kernel_sum,
+            "a": sum(
+                kernel["weight"] * kernel["kernel_sums"]["a"]
+                for kernel in kernel_results
+            ),
+            "b": sum(
+                kernel["weight"] * kernel["kernel_sums"]["b"]
+                for kernel in kernel_results
+            ),
+            "cross": sum(
+                kernel["weight"] * kernel["kernel_sums"]["cross"]
+                for kernel in kernel_results
+            ),
         },
     }

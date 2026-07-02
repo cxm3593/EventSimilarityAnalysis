@@ -2,6 +2,8 @@ import datetime
 from pathlib import Path
 
 import numpy as np
+import sys
+import logging
 
 from event_data_toolbox.event_data_manager import EventDataManager
 from event_analysis_toolbox.all_to_all_comparison import (
@@ -118,7 +120,16 @@ def _run_baseline_comparison(
     return results
 
 
-def _run_all_to_all_scheme(
+def _run_baseline_comparison_2(
+    real_data,
+):
+    '''
+    
+    '''
+
+    return None # TODO: Finish this function.
+
+def _run_all_to_all_comparison(
     real_data,
     v2e_data,
     scheme,
@@ -188,14 +199,36 @@ def _validate_comparison_modes(comparison_modes):
         )
 
 
+
+##########################################
+# Main function for the analysis pipeline. 
+##########################################
 def main():
     # --- Initialization ---
+    print(f"========================================================")
+    print(f"Event Data Distance Analysis Pipeline Working...")
+    print(f"========================================================")
+
+    # Set Logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.info("Logger set up successfully.")
+    
+    
+    # Load Configuration
+    logger.info("Loading configuration...")
     config = load_config()
 
     output_root = Path(config.get('output_dir', 'output'))
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     run_dir = output_root / f"run_{timestamp}"
-    schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
+    window_schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
+
 
     raw_modes = config.get("comparison_modes") or config.get("analysis_modes")
     comparison_modes = _normalize_comparison_modes(raw_modes or _DEFAULT_COMPARISON_MODES)
@@ -215,7 +248,11 @@ def main():
     n_real_windows = int(windows_config.get("n_real_windows", 9))
     n_v2e_windows = int(windows_config.get("n_v2e_windows", 10))
 
+    logger.info("Configuration loaded successfully.")
+
     # --- Load Event Data ---
+    # HDF5 data will be loaded in lazy mode. 
+    logger.info("Loading event data as hdf5 file...")
     event_data_manager = EventDataManager()
 
     real_data = event_data_manager.load_event_data_h5(
@@ -232,6 +269,7 @@ def main():
         f"V2E data loaded, total number of events: {v2e_data.shape[0]}, "
         f"duration: {v2e_data['t'].max()} microseconds"
     )
+    logger.info("Event data loaded successfully.")
 
     # --- Build metric arguments ---
     metric_kwargs = metric_impl.build_kwargs(config)
@@ -241,12 +279,12 @@ def main():
     # --- Run comparisons ---
     baseline_results = []
     all_to_all_results = []
-    for scheme in schemes:
+    for this_window_scheme in window_schemes:
         if "baseline_comparison" in comparison_modes:
             results = _run_baseline_comparison(
                 real_data,
                 v2e_data,
-                scheme,
+                this_window_scheme,
                 baseline_start=baseline_start,
                 baseline_end=baseline_end,
                 n_real_windows=n_real_windows,
@@ -264,10 +302,10 @@ def main():
             baseline_results.append(results)
 
         if "all_to_all_comparison" in comparison_modes:
-            results = _run_all_to_all_scheme(
+            results = _run_all_to_all_comparison(
                 real_data,
                 v2e_data,
-                scheme,
+                this_window_scheme,
                 baseline_start=baseline_start,
                 baseline_end=baseline_end,
                 n_real_windows=n_real_windows,

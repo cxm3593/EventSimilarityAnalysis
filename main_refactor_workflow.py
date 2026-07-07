@@ -224,17 +224,17 @@ def main():
     logger.info("Loading configuration...")
     config = load_config()
 
+    metric_impl = get_metric(config.get("metric", "mmd"))
+
     output_root = Path(config.get('output_dir', 'output'))
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    run_dir = output_root / f"run_{timestamp}"
+    run_dir = output_root / f"run_{metric_impl.name}_{timestamp}"
     window_schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
 
 
     raw_modes = config.get("comparison_modes") or config.get("analysis_modes")
     comparison_modes = _normalize_comparison_modes(raw_modes or _DEFAULT_COMPARISON_MODES)
     _validate_comparison_modes(comparison_modes)
-
-    metric_impl = get_metric(config.get("metric", "mmd"))
     feature_names = config.get("feature_names")
     feature_scales = config.get("feature_scales")
     seed = config.get("seed")

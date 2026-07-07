@@ -7,7 +7,7 @@ import numpy as np
 from tqdm.auto import tqdm  # pyright: ignore[reportMissingModuleSource]
 
 
-_NVIDIA_CUDA_PACKAGES = ("nvidia.cuda_nvrtc", "nvidia.cublas")
+_NVIDIA_CUDA_PACKAGES = ("nvidia.cuda_nvrtc", "nvidia.cublas", "nvidia.curand")
 _CUDA_PATH_CONFIGURED = False
 _DEFAULT_RBF_TARGET_SIMILARITY = 0.01
 

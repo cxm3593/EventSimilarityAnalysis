@@ -13,8 +13,8 @@ baseline_start: 5000
 baseline_end: 10000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
-# available metrics: mmd, chamfer
-metric: mmd
+# available metrics: mmd, chamfer, sliced_wasserstein
+metric: sliced_wasserstein
 
 # Comparison strategies to run for each window scheme:
 #   - baseline_comparison: one baseline vs many windows (line plot)
@@ -54,6 +54,16 @@ chamfer:
   device: CPU:0
   dtype: float32
 
+# Sliced Wasserstein settings (used when metric is sliced_wasserstein; requires POT).
+# Averages the 1-D Wasserstein distance over many random projections of the two
+# event point clouds. More projections give a smoother, lower-variance estimate.
+# backend: numpy (CPU) or cupy (CUDA; requires the gpu extra).
+sliced_wasserstein:
+  n_projections: 100
+  p: 2
+  seed: 0
+  backend: cupy
+
 # Random seed for reproducible data modifiers.
 seed: 0
 
@@ -78,8 +88,8 @@ sensor:
 modifiers:
   - name: noise
     sweep: {type: add_noise, count: [1000, 5000, 10000, 15000]}
-  # - name: subsample
-  #   sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
+  - name: subsample
+    sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
   # - name: jittered
   #   steps:
   #     - {type: jitter, range: {x: 1, y: 1, t: 50}, selection_ratio: 1}

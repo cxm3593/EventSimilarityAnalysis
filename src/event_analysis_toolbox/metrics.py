@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 
 from .chamfer_distance import chamfer_analysis
 from .mmd import mmd_analysis
+from .sliced_wasserstein import sliced_wasserstein_analysis
 
 
 class MetricType(Enum):
@@ -194,6 +195,44 @@ class ChamferMetric(BaseMetric):
     def compute(self, window_a, window_b, **kwargs) -> MetricResult:
         raw = chamfer_analysis(window_a, window_b, **kwargs)
         return MetricResult(value=float(raw["chamfer_distance"]), metadata=raw)
+
+
+@register_metric
+class SlicedWassersteinMetric(BaseMetric):
+    @property
+    def name(self) -> str:
+        return "sliced_wasserstein"
+
+    @property
+    def type(self) -> MetricType:
+        return MetricType.DISTANCE
+
+    def build_kwargs(self, config: dict[str, Any]) -> dict[str, Any]:
+        swd_config = config.get("sliced_wasserstein")
+        if not swd_config:
+            raise ValueError(
+                "config.yaml must define a 'sliced_wasserstein' section when "
+                "metric is 'sliced_wasserstein'."
+            )
+        return {
+            "n_projections": swd_config["n_projections"],
+            "p": swd_config.get("p", 2.0),
+            "seed": swd_config.get("seed", 0),
+            "backend": swd_config.get("backend", "numpy"),
+        }
+
+    def describe_settings(self, metric_kwargs: dict[str, Any]) -> list[str]:
+        return [
+            "Sliced Wasserstein (POT): "
+            f"n_projections={metric_kwargs['n_projections']}, "
+            f"p={metric_kwargs.get('p', 2.0)}, "
+            f"seed={metric_kwargs.get('seed', 0)}, "
+            f"backend={metric_kwargs.get('backend', 'numpy')}"
+        ]
+
+    def compute(self, window_a, window_b, **kwargs) -> MetricResult:
+        raw = sliced_wasserstein_analysis(window_a, window_b, **kwargs)
+        return MetricResult(value=float(raw["sliced_wasserstein"]), metadata=raw)
 
 
 # Populate the public alias after built-in metrics register themselves.

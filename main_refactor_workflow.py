@@ -1,9 +1,6 @@
-import datetime
-from pathlib import Path
+import logging
 
 import numpy as np
-import sys
-import logging
 
 from event_data_toolbox.event_data_manager import EventDataManager
 from event_analysis_toolbox.all_to_all_comparison import (
@@ -16,6 +13,7 @@ from event_analysis_toolbox.baseline_comparison import (
     plot_baseline_comparison,
     save_baseline_comparison_results,
 )
+from event_analysis_toolbox.comparison_common import prepare_run_dir
 from event_analysis_toolbox.event_modifiers import build_pipelines
 from event_analysis_toolbox.metrics import BaseMetric, get_metric
 import yaml  # pyright: ignore[reportMissingModuleSource]
@@ -226,9 +224,12 @@ def main():
 
     metric_impl = get_metric(config.get("metric", "mmd"))
 
-    output_root = Path(config.get('output_dir', 'output'))
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    run_dir = output_root / f"run_{metric_impl.name}_{timestamp}"
+    run_dir = prepare_run_dir(
+        config.get("output_dir", "output"),
+        metric_impl.name,
+        config,
+    )
+    print(f"Run output directory: {run_dir.resolve()}")
     window_schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
 
 

@@ -1,6 +1,3 @@
-import datetime
-from pathlib import Path
-
 import numpy as np
 
 from event_data_toolbox.event_data_manager import EventDataManager
@@ -14,6 +11,7 @@ from event_analysis_toolbox.baseline_comparison import (
     plot_baseline_comparison,
     save_baseline_comparison_results,
 )
+from event_analysis_toolbox.comparison_common import prepare_run_dir
 from event_analysis_toolbox.event_modifiers import build_pipelines
 from event_analysis_toolbox.metrics import BaseMetric, get_metric
 import yaml  # pyright: ignore[reportMissingModuleSource]
@@ -192,16 +190,19 @@ def main():
     # --- Initialization ---
     config = load_config()
 
-    output_root = Path(config.get('output_dir', 'output'))
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    run_dir = output_root / f"run_{timestamp}"
+    metric_impl = get_metric(config.get("metric", "mmd"))
+
+    run_dir = prepare_run_dir(
+        config.get("output_dir", "output"),
+        metric_impl.name,
+        config,
+    )
+    print(f"Run output directory: {run_dir.resolve()}")
     schemes = config.get('window_schemes') or _DEFAULT_SCHEMES
 
     raw_modes = config.get("comparison_modes") or config.get("analysis_modes")
     comparison_modes = _normalize_comparison_modes(raw_modes or _DEFAULT_COMPARISON_MODES)
     _validate_comparison_modes(comparison_modes)
-
-    metric_impl = get_metric(config.get("metric", "mmd"))
     feature_names = config.get("feature_names")
     feature_scales = config.get("feature_scales")
     seed = config.get("seed")

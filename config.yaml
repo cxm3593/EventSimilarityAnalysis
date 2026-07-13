@@ -14,7 +14,7 @@ baseline_end: 10000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
 # available metrics: mmd, chamfer, sliced_wasserstein
-metric: sliced_wasserstein
+metric: mmd
 
 # Comparison strategies to run for each window scheme:
 #   - baseline_comparison: one baseline vs many windows (line plot)
@@ -102,8 +102,8 @@ modifiers:
 
 # Window sampling shared by comparison strategies.
 windows:
-  n_real_windows: 9
-  n_v2e_windows: 10
+  n_real_windows: 99
+  n_v2e_windows: 100
 
 # Each entry runs an independent analysis per scheme. `stride` is the spacing
 # (μs) between successive comparison-window starts: omit (or set null) to use

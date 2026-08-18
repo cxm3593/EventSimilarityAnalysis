@@ -10,7 +10,7 @@ class EventDataManager:
 
         self.opened_files:list = []
 
-    def load_event_data_h5(self, file_path, dataset_name="events", data_key=None):
+    def load_event_data_h5(self, file_path, dataset_name="events", data_key=None) -> h5py.Dataset:
         '''
         Loads the event data from the h5 file and returns the dataset.
         

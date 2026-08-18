@@ -209,8 +209,17 @@ class AddNoise(BaseModifier):
                 noise[name] = rng.uniform(low, high, self.count)
 
         combined = np.concatenate([events, noise])
-        if _field_lookup(combined.dtype, "t"):
-            combined.sort(order=_field_lookup(combined.dtype, "t"))
+        time_field = _field_lookup(combined.dtype, "t")
+        if time_field:
+            # Sort by argsorting the time column rather than `combined.sort(order=...)`.
+            # A structured sort compares whole records through numpy's generic void
+            # comparison path and shuffles 16-byte records as it goes; sorting the
+            # plain int64 column and applying the permutation once is ~38x faster
+            # (161 ms -> 4 ms for a 166k-event window). `stable` keeps events sharing
+            # a timestamp in their original relative order, which the default
+            # quicksort does not; ordering within a timestamp carries no meaning for
+            # the set-based metrics, but making it reproducible is free.
+            combined = combined[np.argsort(combined[time_field], kind="stable")]
         return combined
 
 

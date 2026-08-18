@@ -230,7 +230,14 @@ def plot_baseline_comparison(
     figsize: tuple[float, float] = (10.0, 5.0),
     time_unit: str = "μs",
 ):
-    """Plot distance vs window start time for baseline comparison results."""
+    """Plot distance vs window start time for baseline comparison results.
+
+    The legend can grow large (one entry per modifier variant on top of the
+    real/v2e/baseline entries), so it is placed outside the axes. The figure
+    is measured and widened to fit the legend's actual rendered size (label
+    text length varies with modifier names), so it keeps the full requested
+    ``figsize`` for the plot area and never overflows the canvas.
+    """
     fig, ax = plt.subplots(figsize=figsize)
     metric = results.get("metric", "distance")
     metric_label = metric.upper() if metric == "mmd" else metric
@@ -290,16 +297,35 @@ def plot_baseline_comparison(
     ax.set_xlabel(f"Window start time ({time_unit})")
     ax.set_ylabel(metric_label)
     ax.set_title(title or default_title)
-    ax.legend(loc="best")
     ax.grid(True, alpha=0.3)
-    fig.tight_layout()
+    legend = ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
+
+    # Measure the legend's actual rendered width (depends on label text, which
+    # varies with modifier names) and widen the figure to fit it, so the plot
+    # area keeps its full requested `figsize` and the legend never overflows
+    # the canvas -- unlike a fixed guess, which clips long labels.
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    overflow_px = legend.get_window_extent(renderer).x1 - fig.bbox.width
+    if overflow_px > 0:
+        # Preserve the axes' absolute size/position (in inches) across the
+        # resize -- adjusting only `right` in subplots_adjust would ignore the
+        # left margin and let the axes (and the legend anchored to it) grow
+        # wider than intended, leaving the legend clipped again.
+        pos = ax.get_position()
+        ax_left_in = pos.x0 * figsize[0]
+        ax_width_in = pos.width * figsize[0]
+
+        padding_in = 0.15
+        new_width = figsize[0] + overflow_px / fig.dpi + padding_in
+        fig.set_size_inches(new_width, figsize[1])
+        ax.set_position([ax_left_in / new_width, pos.y0, ax_width_in / new_width, pos.height])
+        fig.canvas.draw()
 
     if save_path is not None:
         fig.savefig(str(save_path), dpi=150, bbox_inches="tight")
     if show:
         plt.show()
-
-    return fig
 
 
 def save_baseline_comparison_results(

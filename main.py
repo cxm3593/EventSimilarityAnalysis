@@ -84,6 +84,8 @@ class PipelineConfig:
     """
 
     run_output_dir: Path
+    real_temporal_offset: int
+    v2e_temporal_offset: int
     metric: BaseMetric
     metric_kwargs: dict[str, Any]
     window_schemes: list[WindowScheme]
@@ -128,6 +130,8 @@ class PipelineConfig:
 
         return cls(
             run_output_dir=run_output_dir,
+            real_temporal_offset=config_dict.get("real_temporal_offset"), 
+            v2e_temporal_offset=config_dict.get("v2e_temporal_offset"),
             metric=metric,
             metric_kwargs=metric.build_kwargs(config_dict),
             window_schemes=window_schemes,
@@ -406,6 +410,7 @@ def main() -> None:
     for line in config.metric.describe_settings(config.metric_kwargs):
         LOGGER.info(line)
 
+    # Load data
     real_events, v2e_events = load_event_streams(config)
 
     results_by_mode = run_comparisons(real_events, v2e_events, config)

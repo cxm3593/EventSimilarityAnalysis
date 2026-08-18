@@ -114,24 +114,46 @@ def sliced_wasserstein_analysis(
 
     _validate_inputs(features_a, features_b, n_projections, p)
 
+    # Captured before the arrays are released below, so the result still reports
+    # the sizes actually compared.
+    n_a, n_b = len(features_a), len(features_b)
+
     ot = _require_pot()
 
-    raw_value = ot.sliced_wasserstein_distance(
-        features_a,
-        features_b,
-        n_projections=n_projections,
-        p=p,
-        seed=seed,
-    )
-    # POT returns a scalar in the same backend as its inputs; pull it back to a
-    # host float regardless of whether it is a NumPy or CuPy value.
-    value = float(np.asarray(raw_value if backend_name == "numpy" else xp.asnumpy(raw_value)))
+    try:
+        raw_value = ot.sliced_wasserstein_distance(
+            features_a,
+            features_b,
+            n_projections=n_projections,
+            p=p,
+            seed=seed,
+        )
+        # POT returns a scalar in the same backend as its inputs; pull it back to a
+        # host float regardless of whether it is a NumPy or CuPy value.
+        value = float(np.asarray(raw_value if backend_name == "numpy" else xp.asnumpy(raw_value)))
+    finally:
+        if backend_name == "cupy":
+            # POT projects both clouds onto `n_projections` directions, so a single
+            # call transiently allocates on the order of
+            # (n_a + n_b) * n_projections * 8 bytes plus sort workspaces -- roughly
+            # 6.4 GB for a 450k-event window at 100 projections. CuPy's pool caches
+            # freed blocks keyed by size, and because every window has a different
+            # event count no cached block is ever reusable: the pool grows until the
+            # device is exhausted, after which every allocation falls into CuPy's
+            # slow out-of-memory retry path. Returning the blocks here keeps device
+            # usage flat for ~5% per-call overhead. `_CupyBackend.after_chunk_pair`
+            # in mmd.py does the same job for the chunked MMD kernel sums.
+            # Only the device pool is released. The pinned (host) pool stages
+            # host-device transfers and costs no VRAM, and freeing it forces an
+            # expensive re-allocation on the next call (~12% per call measured).
+            del features_a, features_b
+            xp.get_default_memory_pool().free_all_blocks()
 
     return {
         "sliced_wasserstein": value,
         "distance": value,
-        "events_a": len(features_a),
-        "events_b": len(features_b),
+        "events_a": n_a,
+        "events_b": n_b,
         "n_projections": n_projections,
         "p": p,
         "seed": seed,

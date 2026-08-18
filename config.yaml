@@ -1,16 +1,20 @@
 
 # Data paths
-real_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/real_event_undistorted_normalized.h5"
-v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/Data/data_sync/v2e_event_undistorted_normalized.h5"
+real_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_real.h5"
+v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_v2e.h5"
 
 # real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/real_event_undistorted_normalized.h5"
 # v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/v2e_event_undistorted_normalized.h5"
 
+# Temporal Offset (us)
+real_temporal_offset: 0
+v2e_temporal_offset: 0
+
 # Output directory for analysis results (CSV / metadata / plots).
 output_dir: "output"
 
-baseline_start: 5000
-baseline_end: 10000
+baseline_start: 10000
+baseline_end: 20000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
 # available metrics: mmd, chamfer, sliced_wasserstein
@@ -45,8 +49,8 @@ mmd:
       rbf_kernel_target_similarity: 0.5
     # - rbf_kernel_max_distance: 15
     #   rbf_kernel_target_similarity: 0.5
-    - rbf_kernel_max_distance: 75
-      rbf_kernel_target_similarity: 0.5
+    # - rbf_kernel_max_distance: 75
+    #   rbf_kernel_target_similarity: 0.5
     
 
 # Chamfer-distance settings (used when metric is chamfer; requires Open3D).
@@ -86,8 +90,8 @@ sensor:
 #   - {type: transform, offset: {x: 5, y: 0, t: 0}}
 #   - {type: scaling, scale: {x: 1.05, y: 1.05, t: 1.0}}
 modifiers:
-  - name: noise
-    sweep: {type: add_noise, count: [1000, 3000, 5000, 7000, 9000, 11000, 13000, 15000]}
+  # - name: noise
+  #   sweep: {type: add_noise, count: [1000, 3000, 5000, 7000, 9000, 11000, 13000, 15000]}
   # - name: subsample
   #   sweep: {type: subsample, ratio: [0.5, 0.25], method: random}
   # - name: jittered
@@ -112,8 +116,8 @@ windows:
 window_schemes:
   - name: consecutive
     stride: null
-  - name: periodic
-    stride: 315000
+  # - name: periodic
+  #   stride: 315000
 
 # All-to-all comparison layout (visualizer is separate from the distance metric).
 all_to_all:

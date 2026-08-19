@@ -1,7 +1,7 @@
 
 # Data paths
-real_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_real.h5"
-v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_v2e.h5"
+real_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f5/final_masked_real.h5"
+v2e_data_path: "C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f5/final_masked_v2e.h5"
 
 # real_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/real_event_undistorted_normalized.h5"
 # v2e_data_path: "C:/Users/VirgilMA/Academics/Research/Data/data_sync/v2e_event_undistorted_normalized.h5"
@@ -13,8 +13,8 @@ v2e_temporal_offset: 0
 # Output directory for analysis results (CSV / metadata / plots).
 output_dir: "output"
 
-baseline_start: 10000
-baseline_end: 20000
+baseline_start: 15000
+baseline_end: 16000
 
 # Distance metric used by all comparison strategies (mmd, chamfer, ...).
 # available metrics: mmd, chamfer, sliced_wasserstein
@@ -45,10 +45,10 @@ mmd:
   backend: cupy
   weight_method: uniform
   kernels:
-    - rbf_kernel_max_distance: 3
-      rbf_kernel_target_similarity: 0.5
-    # - rbf_kernel_max_distance: 15
+    # - rbf_kernel_max_distance: 3
     #   rbf_kernel_target_similarity: 0.5
+    - rbf_kernel_max_distance: 15
+      rbf_kernel_target_similarity: 0.5
     # - rbf_kernel_max_distance: 75
     #   rbf_kernel_target_similarity: 0.5
     
@@ -106,8 +106,8 @@ modifiers:
 
 # Window sampling shared by comparison strategies.
 windows:
-  n_real_windows: 99
-  n_v2e_windows: 100
+  n_real_windows: 999
+  n_v2e_windows: 1000
 
 # Each entry runs an independent analysis per scheme. `stride` is the spacing
 # (μs) between successive comparison-window starts: omit (or set null) to use

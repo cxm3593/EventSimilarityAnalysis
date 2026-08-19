@@ -1,0 +1,46 @@
+real_data_path: C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_real.h5
+v2e_data_path: C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials/optical_chopper_data_f2/final_masked_v2e.h5
+real_temporal_offset: 0
+v2e_temporal_offset: 0
+output_dir: output
+baseline_start: 15000
+baseline_end: 16000
+metric: mmd
+comparison_modes:
+- baseline_comparison
+feature_names: null
+feature_scales:
+  x: 1
+  y: 1
+  t: 42
+mmd:
+  biased: true
+  chunk_size: 20000
+  backend: cupy
+  weight_method: uniform
+  kernels:
+  - rbf_kernel_max_distance: 3
+    rbf_kernel_target_similarity: 0.5
+chamfer:
+  device: CPU:0
+  dtype: float32
+sliced_wasserstein:
+  n_projections: 100
+  p: 2
+  seed: 0
+  backend: cupy
+seed: 0
+sensor:
+  width: 1280
+  height: 720
+modifiers: null
+windows:
+  n_real_windows: 999
+  n_v2e_windows: 1000
+window_schemes:
+- name: consecutive
+  stride: null
+all_to_all:
+  visualizer: mds
+  n_components: 2
+  annotate: false

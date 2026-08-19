@@ -1,0 +1,29 @@
+name: consecutive
+strategy: baseline_comparison
+metric: mmd
+baseline:
+  start: 15000
+  end: 16000
+  n_events: 1446
+  source: real
+modifiers: {}
+settings:
+  baseline_start: 15000
+  baseline_end: 16000
+  width: 1000
+  stride: 1000
+  real_window_start: 16000
+  v2e_window_start: 15000
+  n_real_windows: 999
+  n_v2e_windows: 1000
+  metric: mmd
+  metric_kwargs:
+    biased: true
+    chunk_size: 20000
+    kernels:
+    - rbf_kernel_max_distance: 75
+      rbf_kernel_target_similarity: 0.5
+    weight_method: uniform
+    backend: cupy
+    progress: false
+  seed: 0

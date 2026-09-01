@@ -1,0 +1,49 @@
+% Venue-neutral manuscript scaffold.
+% Replace the document class and page geometry when the target venue is selected.
+\documentclass[10pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage[protrusion=true,expansion=false]{microtype}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+
+\graphicspath{{figures/}}
+
+\newenvironment{draftnote}
+  {\begin{quote}\small\color{red!70!black}\textbf{Draft note.}\ }
+  {\end{quote}}
+
+\title{A Calibrated Framework for Measuring the Sim-to-Real Gap in Event-Camera Data}
+\author{Chengyi Ma}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\begin{draftnote}
+Write the abstract after the evaluation and results sections stabilize. It should state
+the problem, the task-independent point-set formulation, the calibrated optical-chopper
+protocol, the principal metric findings, and the practical implication for event-camera
+simulator evaluation.
+\end{draftnote}
+\end{abstract}
+
+\noindent\textbf{Keywords:}
+event cameras, event simulation, sim-to-real gap, maximum mean discrepancy,
+sliced Wasserstein distance
+
+\input{outline}
+
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+\end{document}

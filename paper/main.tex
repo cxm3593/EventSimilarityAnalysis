@@ -14,6 +14,22 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,noabbrev]{cleveref}
 
+% Unicode symbols preserved verbatim from the original outline.
+\DeclareUnicodeCharacter{00B2}{\ensuremath{{}^{2}}}
+\DeclareUnicodeCharacter{00B5}{\ensuremath{\mu}}
+\DeclareUnicodeCharacter{00B7}{\ensuremath{\cdot}}
+\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+\DeclareUnicodeCharacter{03B8}{\ensuremath{\theta}}
+\DeclareUnicodeCharacter{03C3}{\ensuremath{\sigma}}
+\DeclareUnicodeCharacter{1D40}{\ensuremath{{}^{\mathsf T}}}
+\DeclareUnicodeCharacter{2016}{\ensuremath{\Vert}}
+\DeclareUnicodeCharacter{2026}{\ldots}
+\DeclareUnicodeCharacter{2080}{\ensuremath{{}_{0}}}
+\DeclareUnicodeCharacter{2081}{\ensuremath{{}_{1}}}
+\DeclareUnicodeCharacter{2113}{\ensuremath{\ell}}
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+
 \graphicspath{{paper/figures/}}
 
 \newenvironment{draftnote}
@@ -43,6 +59,7 @@ sliced Wasserstein distance
 
 \input{paper/outline}
 
+\nocite{*}
 \bibliographystyle{ieeetr}
 \bibliography{paper/references}
 

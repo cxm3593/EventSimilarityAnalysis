@@ -1,17 +1,17 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Event cameras have moved from a research curiosity toward commercial deployment in
+\textbf{Event cameras have moved from a research curiosity toward commercial deployment in
 robotics, automotive systems, and augmented and virtual reality, driven by demands for
-low latency and high dynamic range \cite{gallego2022event}. Applications include visual
+low latency and high dynamic range \cite{gallego2022event}.} Applications include visual
 SLAM and obstacle avoidance for robotic spatial awareness
 \cite{vidal2018ultimate}, perception and steering prediction for autonomous driving
 \cite{maqueda2018steering}, and low-power, always-on near-eye tracking
 \cite{angelopoulos2021gaze}. These are settings in which conventional frame cameras
 struggle with fast motion, high latency, or extreme illumination.
 
-Unlike a frame camera, which samples every pixel at a fixed rate, a dynamic vision
-sensor (DVS) pixel operates independently and asynchronously. It emits an event when
+\textbf{Unlike a frame camera, which samples every pixel at a fixed rate, a dynamic vision
+sensor (DVS) pixel operates independently and asynchronously.} It emits an event when
 the change in log intensity exceeds a contrast threshold, producing a stream of
 spatiotemporal tuples
 \[
@@ -24,8 +24,8 @@ an absence of conventional motion blur. At the same time, the sparse asynchronou
 stream has neither a fixed sampling rate nor a dense image grid, so it cannot be passed
 directly to algorithms designed around conventional frames.
 
-Consequently, event streams are either processed by asynchronous methods or converted
-into intermediate representations compatible with standard learning systems. Common
+\textbf{Consequently, event streams are either processed by asynchronous methods or converted
+into intermediate representations compatible with standard learning systems.} Common
 choices include binned event frames \cite{maqueda2018steering}, binary event frames
 \cite{barchid2022binarep}, memory and time surfaces
 \cite{afshar2019surfaces,lagorce2017hots,sironi2018hats}, and voxel grids
@@ -35,7 +35,7 @@ particularly difficult bottleneck because high-speed event data and correspondin
 ground truth are expensive to capture and annotate
 \cite{wang2024eyetracking,hu2021v2e,lin2022dvsvoltmeter}.
 
-The cost of collecting real recordings has encouraged the use of synthetic events.
+\textbf{The cost of collecting real recordings has encouraged the use of synthetic events.}
 The widely used v2e simulator converts video frames into event streams, using video
 interpolation to increase the temporal sampling rate \cite{hu2021v2e}. More recent
 simulators target different limitations of this pipeline, including stochastic
@@ -44,16 +44,16 @@ simulation in PECS \cite{han2024pecs}, and continuous video-to-event conversion 
 \cite{zhang2024v2ce}. Nevertheless, every simulator introduces a domain gap between
 synthetic and real data.
 
-Existing simulators are commonly evaluated qualitatively or through a particular
+\textbf{Existing simulators are commonly evaluated qualitatively or through a particular
 downstream task rather than through a common direct measurement of event-stream
-realism \cite{tan2025carla,chen2024instance}. As a result, realism claims cannot be
+realism \cite{tan2025carla,chen2024instance}.} As a result, realism claims cannot be
 compared across methods on equal terms. Learned measures such as the Event Quality
 Score begin to address this problem, but depend on the latent features of a pretrained
 network rather than on a physically interpretable and directly reproducible
 measurement \cite{chanda2025eqs}.
 
-This work proposes a task-independent framework for directly quantifying the gap
-between real and simulated event data. It treats raw events as samples from
+\textbf{This work proposes a task-independent framework for directly quantifying the gap
+between real and simulated event data.} It treats raw events as samples from
 spatiotemporal point distributions and combines multi-scale Maximum Mean Discrepancy
 (MMD) \cite{gretton2012kernel} and Sliced Wasserstein Distance (SWD)
 \cite{bonneel2015sliced,flamary2021pot}, with Chamfer distance as a point-set baseline.
@@ -68,8 +68,8 @@ comparisons.
 
 \subsection{Event generation and sensor non-idealities}
 
-In the ideal DVS model, every pixel continuously monitors log intensity
-\(L(\bm{x},t)=\log I(\bm{x},t)\). An event is emitted at location \(\bm{x}_k\) and time
+\textbf{In the ideal DVS model, every pixel continuously monitors log intensity
+\(L(\bm{x},t)=\log I(\bm{x},t)\).} An event is emitted at location \(\bm{x}_k\) and time
 \(t_k\) when the change since the previous event crosses the polarity-dependent contrast
 threshold:
 \begin{equation}
@@ -82,7 +82,7 @@ where \(p_k\in\{-1,+1\}\). The pixel then enters a brief refractory period
 is the generative model that both the physical sensor and any faithful simulator seek
 to follow.
 
-Real sensors depart from this ideal model. The user does not directly set a physically
+\textbf{Real sensors depart from this ideal model.} The user does not directly set a physically
 interpretable threshold \(C_{p_k}\); instead, device-specific bias currents shift circuit
 operating points. Their mapping to the effective threshold depends on factory trim,
 temperature, and photocurrent \cite{graca2023biasing}. Pixel-to-pixel threshold
@@ -94,28 +94,28 @@ detect.
 
 \subsection{Event streams as distribution samples}
 
-Reproducing sensor behavior is the simulator's task; evaluating that reproduction
-requires a representation that is not tied to a downstream application. An event
+\textbf{Reproducing sensor behavior is the simulator's task; evaluating that reproduction
+requires a representation that is not tied to a downstream application.} An event
 recording can be viewed as a set of \((x,y,t,p)\) samples from an underlying distribution
 over a space--time volume. Given a real set \(X\) and a synthetic set \(Y\) generated
 from the same stimulus, simulator realism becomes a two-sample problem: how different
 are the distributions that generated \(X\) and \(Y\)?
 
-MMD answers this question through distribution embeddings in a reproducing-kernel
-Hilbert space. Each distribution is represented by the mean of its embedded samples,
+\textbf{MMD answers this question through distribution embeddings in a reproducing-kernel
+Hilbert space.} Each distribution is represented by the mean of its embedded samples,
 and MMD is the distance between the two means \cite{gretton2012kernel}. Wasserstein
 distance instead measures the minimum transport cost required to move one distribution
 onto the other. SWD makes this practical in higher dimensions by averaging inexpensive
 one-dimensional Wasserstein distances over projection directions
 \cite{bonneel2015sliced,flamary2021pot}.
 
-Chamfer distance provides a point-level baseline. It matches every point to its nearest
+\textbf{Chamfer distance provides a point-level baseline.} It matches every point to its nearest
 neighbor in the other set and is widely used for point-cloud comparison
 \cite{fan2017pointset}. Unlike MMD and SWD, it compares local point positions rather
 than distributions. This makes it intuitive, but potentially less robust to event noise,
 density, and unmatched points.
 
-Spike-train distances from computational neuroscience are a natural alternative.
+\textbf{Spike-train distances from computational neuroscience are a natural alternative.}
 The van Rossum distance convolves spike trains with a temporal kernel before comparing
 them \cite{vanrossum2001novel}, while SPIKE-distance characterizes differences in
 one-dimensional spike timing \cite{kreuz2013monitoring}. Applying such methods at the
@@ -129,8 +129,8 @@ carries much of the event signal. We therefore focus on point-distribution dista
 \subsection{Framework overview}
 \label{sec:framework}
 
-The framework is a fixed pipeline from paired acquisition to a set of distance values
-for each experimental condition. Real and synthetic events are acquired from the same
+\textbf{The framework is a fixed pipeline from paired acquisition to a set of distance values
+for each experimental condition.} Real and synthetic events are acquired from the same
 stimulus, converted into a common polarity-aware point representation, scaled so that
 space and time are commensurable, and divided into comparison windows. MMD and SWD are
 then computed alongside the Chamfer baseline.
@@ -144,27 +144,27 @@ then computed alongside the Chamfer baseline.
     \label{fig:pipeline}
 \end{figure}
 
-Paired acquisition is intended to make the residual difference attributable to the
-simulator rather than to a change in scene content. A Prophesee EVK4 event camera and an
+\textbf{Paired acquisition is intended to make the residual difference attributable to the
+simulator rather than to a change in scene content.} A Prophesee EVK4 event camera and an
 Allied Vision Mako frame camera view the same stimulus and are externally triggered from
 a common source. The Mako frames drive v2e, so the real and synthetic streams originate
 from the same physical scene.
 
-The validation stimulus is an optical chopper, chosen because it produces a periodic
-signal at a known and controllable frequency. Each trial contains repeated instances of
+\textbf{The validation stimulus is an optical chopper, chosen because it produces a periodic
+signal at a known and controllable frequency.} Each trial contains repeated instances of
 nominally the same stimulus, which provides real--real comparisons for estimating
 measurement variability and a practical noise floor. Sweeping the chopper speed gives
 a single controlled physical variable along which metric behavior can be evaluated.
 Because the chopper motor is free-running rather than phase-locked to the cameras,
 periods are recovered from its reference output rather than inferred from frame count.
 
-Every free parameter is fixed by rule rather than fitted to the pair of datasets being
-compared. Kernel bandwidths, projection count, and the space--time conversion are
+\textbf{Every free parameter is fixed by rule rather than fitted to the pair of datasets being
+compared.} Kernel bandwidths, projection count, and the space--time conversion are
 anchored to sensor geometry, numerical convergence, or application physics. This
 restriction is essential if values obtained under different conditions are to remain
 comparable.
 
-The measurement is defined for one physical sensor and configuration at a time. Within
+\textbf{The measurement is defined for one physical sensor and configuration at a time.} Within
 that scope, the framework can track one simulator across conditions or rank multiple
 simulators against the same recordings. Direct comparison of absolute metric values
 across different sensors is outside the present scope because the spatial and temporal
@@ -174,7 +174,7 @@ modeled.
 \subsection{Event representation}
 \label{sec:representation}
 
-Within a comparison window, events are represented as three-dimensional points
+\textbf{Within a comparison window, events are represented as three-dimensional points}
 \begin{equation}
     \bm{z}_i = \left(x_i,\,y_i,\,t_i/\tau_{\mathrm{px}}\right),
     \label{eq:event-representation}
@@ -183,8 +183,8 @@ where \(\tau_{\mathrm{px}}\) is expressed in microseconds per pixel. ON and OFF 
 split into separate channels, compared independently, and combined only after
 channel-level metric computation.
 
-The temporal conversion prevents one coordinate from dominating merely because it is
-expressed in different units. We anchor \(\tau_{\mathrm{px}}\) to motion expected in the
+\textbf{The temporal conversion prevents one coordinate from dominating merely because it is
+expressed in different units.} We anchor \(\tau_{\mathrm{px}}\) to motion expected in the
 target application rather than fitting it to the two distributions. For the eye-motion
 case, the saccade main-sequence relation \(D=2.2A+21\), together with the sensor geometry,
 implies a range of approximately
@@ -194,7 +194,7 @@ amplitude--duration form is used because it remains approximately linear over th
 amplitudes of interest, whereas peak velocity saturates. Because no single main-sequence
 model is universally accepted, sensitivity across this range must be reported.
 
-Comparisons are made in fixed temporal windows rather than over entire recordings. The
+\textbf{Comparisons are made in fixed temporal windows rather than over entire recordings.} The
 window duration and placement rule are held constant across a test, and downstream
 metric parameters are constructed to be independent of the particular samples within a
 window.
@@ -208,8 +208,8 @@ counts for both sides of every comparison except the deliberate sample-size swee
 \subsection{Maximum Mean Discrepancy}
 \label{sec:mmd}
 
-MMD compares the global structure of two sample sets rather than matching individual
-points. For real samples \(X=\{\bm{x}_1,\ldots,\bm{x}_m\}\) and synthetic samples
+\textbf{MMD compares the global structure of two sample sets rather than matching individual
+points.} For real samples \(X=\{\bm{x}_1,\ldots,\bm{x}_m\}\) and synthetic samples
 \(Y=\{\bm{y}_1,\ldots,\bm{y}_n\}\), the unbiased estimator is
 \begin{align}
     \widehat{\operatorname{MMD}}_u^2(X,Y)
@@ -225,11 +225,11 @@ points. For real samples \(X=\{\bm{x}_1,\ldots,\bm{x}_m\}\) and synthetic sample
     \sum_{i=1}^m\sum_{j=1}^n k(\bm{x}_i,\bm{y}_j).
     \label{eq:mmd-unbiased}
 \end{align}
-If the sets follow the same distribution, cross-set similarity approaches within-set
-similarity and the terms cancel. If the distributions differ, the within-set terms
+\textbf{If the sets follow the same distribution, cross-set similarity approaches within-set
+similarity and the terms cancel.} If the distributions differ, the within-set terms
 dominate.
 
-We use the Gaussian kernel
+\textbf{We use the Gaussian kernel}
 \begin{equation}
     k(\bm{a},\bm{b})
     =
@@ -241,16 +241,16 @@ We use the Gaussian kernel
 where \(\sigma\) controls the spatial--temporal length scale at which structure is
 compared.
 
-The unbiased estimator is required because the biased estimator includes self-pairs,
-for which the Gaussian kernel is exactly one. Those diagonal terms introduce a positive
+\textbf{The unbiased estimator is required because the biased estimator includes self-pairs,
+for which the Gaussian kernel is exactly one.} Those diagonal terms introduce a positive
 sample-size-dependent offset. Event count varies with sensor noise and simulator
 behavior, so this offset would be confounded with the discrepancy being measured
 \cite{gretton2012kernel}. Although \cref{eq:mmd-unbiased} is valid for unequal \(m\) and
 \(n\), the evaluation protocol subsamples equal numbers of real and synthetic events so
 that every metric is compared at a common sample size.
 
-The implementation uses several fixed kernel bandwidths anchored to sensor-scale
-structure. This replaces the median heuristic, whose value changes with the samples and
+\textbf{The implementation uses several fixed kernel bandwidths anchored to sensor-scale
+structure.} This replaces the median heuristic, whose value changes with the samples and
 window duration and would therefore break cross-condition comparability. Small
 bandwidths resolve fine structure but have an important failure mode under added
 uniform noise: most kernel evaluations approach zero while the number of pairs grows,
@@ -272,8 +272,8 @@ remove it from the final framework.
 \subsection{Sliced Wasserstein Distance}
 \label{sec:swd}
 
-Wasserstein distance measures the minimum work required to transport the mass of one
-distribution onto another. Direct optimal transport in three dimensions is expensive,
+\textbf{Wasserstein distance measures the minimum work required to transport the mass of one
+distribution onto another.} Direct optimal transport in three dimensions is expensive,
 but in one dimension the optimal assignment is obtained by sorting and matching
 samples. SWD exploits this fact by projecting the point sets onto multiple
 one-dimensional directions:
@@ -292,7 +292,7 @@ where each \(\bm{\theta}_\ell\) is a unit projection direction, \(L\) is the num
 directions, and \(W_p\) is the one-dimensional Wasserstein distance of order \(p\)
 \cite{bonneel2015sliced,flamary2021pot}. We use \(p=2\).
 
-The directions are sampled by Monte Carlo, so the reported value is an estimate.
+\textbf{The directions are sampled by Monte Carlo, so the reported value is an estimate.}
 Repeating the computation on identical data produces a residual spread controlled by
 \(L\).
 
@@ -305,7 +305,7 @@ between-condition differences used in the conclusions.
 \subsection{Chamfer-distance baseline}
 \label{sec:chamfer}
 
-For point sets \(X\) and \(Y\), the symmetric Chamfer distance is
+\textbf{For point sets \(X\) and \(Y\), the symmetric Chamfer distance is}
 \begin{equation}
     d_{\mathrm{CD}}(X,Y)
     =
@@ -316,7 +316,7 @@ For point sets \(X\) and \(Y\), the symmetric Chamfer distance is
         \lVert\bm{y}-\bm{x}\rVert_2.
     \label{eq:chamfer}
 \end{equation}
-It is evaluated on the same polarity-split representation as MMD and SWD. Its role is
+\textbf{It is evaluated on the same polarity-split representation as MMD and SWD.} Its role is
 to show what an intuitive nearest-neighbor point-set distance misses relative to
 distribution-level metrics, particularly under changes in noise, density, and temporal
 structure \cite{fan2017pointset}.

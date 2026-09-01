@@ -40,7 +40,10 @@ feature_scales:
 # MMD-specific settings (used when metric is mmd).
 mmd:
   # false = unbiased estimator (diagonal removed); true = biased estimator.
-  biased: true
+  # Unbiased always: the biased estimator responds to sample size rather than to the
+  # distributions. build_metrics() overrides this to False regardless, so leaving it
+  # true only made every run_config.yaml record the wrong thing.
+  biased: false
   chunk_size: 20000
   backend: cupy
   weight_method: uniform

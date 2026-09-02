@@ -89,7 +89,41 @@
 \subsection{Chamfer baseline}
 
 \begin{itemize}
-  \item \textbf{Definition and role.} Symmetric nearest-neighbor distance on the same representation; the comparison point that shows what a naive point-set distance misses (distributional structure, noise sensitivity). \cite{fan2017pointset}
+  \item \textbf{Chamfer distance provides a point-level baseline against which the distribution-level behavior of MMD and SWD can be evaluated.} It computes a symmetric nearest-neighbor distance on the same event representation and provides a comparison point for showing what a simpler point-set distance misses, including distributional structure and sensitivity to event density. \cite{fan2017pointset}
+\end{itemize}
+
+\subsection{Metric evaluation protocol}
+
+\begin{itemize}
+  \item \textbf{However, directly comparing real and simulated data with these metrics would produce distance values without showing whether they are meaningful, how large a physical difference they represent, or what properties of the data caused them.} MMD, SWD, and Chamfer operate on different numerical scales, and their responses may also depend on metric settings, event density, and the selected temporal window.
+  \item \textbf{We therefore evaluate the metrics through three controlled tests that establish a real-data baseline, a temporal distance ruler, and sensitivity to individual data modifications before applying them in a fourth real--simulated comparison.} All four tests use the calibrated optical-chopper recordings and the event representation defined above so that the different stages of the evaluation can be related to one another.
+\end{itemize}
+
+\subsubsection{Test 1: Null test}
+
+\begin{itemize}
+  \item \textbf{The null test first establishes the range of values caused by finite sampling alone by comparing subsets from the same real recording.} Events within each temporal window are randomly divided into two 50\% subsets, which are compared using MMD, SWD, and Chamfer distance. The split and comparison are repeated to measure sampling variation, and the current evaluation examines 1 ms, 5 ms, and 10 ms windows from the calibrated F1 recording.
+\end{itemize}
+
+\subsubsection{Test 2: Ruler test}
+
+\begin{itemize}
+  \item \textbf{Once this no-intended-difference baseline is known, the ruler test measures how far the metric values move away from it under a known temporal displacement of the calibrated event sequence.} One complete rotation is divided into consecutive 5 ms windows, the comparison span is shifted from 0 ms to one full rotation, and corresponding windows are compared at each shift before their distances are averaged across the rotation.
+  \item \textbf{Because the optical-chopper signal repeats, this temporal ruler is only unambiguous over its initial range and is used locally rather than across the complete rotation.} As the shift approaches a complete rotation, the event structures become similar again and the distance decreases, so temporal equivalents are calculated only from the initial section of the response.
+\end{itemize}
+
+\subsubsection{Test 3: Modifier test}
+
+\begin{itemize}
+  \item \textbf{Even an interpretable distance cannot reveal what kind of change produced it, so the modifier test isolates how each metric responds to controlled changes in event count, timestamp structure, and event clumping.} The test starts with 1 ms real-event windows from the calibrated F1 recording, applies one modifier at increasing magnitudes, and compares each modified window with its original version using up to 750 events per comparison.
+  \item \textbf{The null, ruler, and modifier tests together establish whether a distance exceeds ordinary variation, what controlled displacement it corresponds to, and which event-data changes may explain it.} Their outputs provide the three references used to interpret the real--simulated distances in the final test: an empirical baseline, a temporal equivalent, and a set of modifier-response curves.
+\end{itemize}
+
+\subsubsection{Test 4: Simulator test}
+
+\begin{itemize}
+  \item \textbf{With these interpretations established, the simulator test compares phase-matched real, v2e, and V2CE windows against real--real variation instead of treating zero distance as the expected reference.} The current comparison uses 5 ms windows at 40 evenly distributed phase positions from three complete rotations, with real period 0 providing the reference windows. Real--real, real--v2e, and real--V2CE comparisons use every event within each window without an event-count cap. Polarity is dropped and the feature space is (x, y, t/42); unbiased MMD is computed with RBF bandwidths 3, 15, and 75, SWD uses 100 projections with p = 2, and Chamfer distance is computed in CPU float32.
+  \item \textbf{The resulting distances therefore describe how each generated dataset departs from the recorded EVK4 data under a specific simulator configuration, rather than providing an absolute ranking of simulator quality.} In particular, V2CE operates at a different internal resolution and may model a different sensor configuration, so its distance shows that its output is more or less different from the EVK4 recording without by itself showing that the simulator is universally better or worse.
 \end{itemize}
 
 \section{Evaluation}

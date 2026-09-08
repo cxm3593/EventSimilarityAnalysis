@@ -45,12 +45,31 @@
 \subsection{Framework overview}
 
 \begin{itemize}
-  \item \textbf{The framework runs as a fixed pipeline from paired acquisition through to a set of distance values per condition.} Real and synthetic events are acquired in pairs from the same stimulus, then converted into a common point-set representation that is polarity-split, space-time scaled, and windowed. Two distribution-level metrics, MMD and SWD, are computed on that representation alongside a Chamfer baseline. The resulting values are validated first on controlled stimuli.
+  \item \textbf{Evaluating the candidate metrics requires real and simulated event streams acquired under comparable conditions.} Because many existing event-camera simulators take images or video as input, we need paired real-event recordings and image sequences representing the same stimulus, with spatial and temporal alignment established through calibration. We also need repeated observations under nominally identical conditions to characterize real-to-real variability and provide a baseline for interpreting real-to-simulated differences.
+
+  \item \textbf{Therefore, a data collection and calibration framework for controllable periodic stimulus is built.} Real and synthetic events are acquired in pairs from the same stimulus, then converted into a common point-set representation that is polarity-split, space-time scaled, and windowed. Two distribution-level metrics, MMD and SWD, are computed on that representation alongside a Chamfer baseline. The resulting values are validated first on controlled stimuli.
   
-  \item \textbf{The first stage is to record event data and frame video data that are comparable with spatial alignment and temporal synchronization} An EVK4 event camera and a Mako frame camera view the same stimulus, both externally triggered from a common source so that the two streams are synchronised, and the Mako frames then drive v2e, so real and synthetic events originate from an identical physical scene and any difference between them is a property of the simulator rather than of what was filmed.
-  
+  \item \textbf{The first stage is to record event data and frame video data that are comparable with spatial alignment and temporal synchronization} The event camera is Prophesee EVK 4 and the conventional frame camera is Mako U-130b. 
+
   \item \textbf{For validation the stimulus is an optical chopper, chosen because it produces a periodic signal at a known, tunable frequency.} Each trial contains many nominally identical periods, which supplies repeated samples of the same stimulus for estimating variability and a noise floor, and sweeping the chopper frequency gives a single physically controlled variable along which the metrics can be tested. The chopper motor is free-running rather than phase-locked to the cameras, so periods are recovered from its reference output rather than assumed from frame count.
-  
+
+\subsubsection{Spatial Alignment}
+
+  \item \textbf{The cameras are calibrated to be spatially aligned and temporally synced in two steps. The first steps includes using homography for spaitally alignment and external triggers for temporal synchronization.}. We first used a printed checkerboard to calibrate both cameras. The calibration process for the conventional camera followed the standard procedure to get the intrinsic matrix. But for the event camera, we used E2VID to convert event stream into frames, so that standard corner detection and intrinsic calibration algorithms can be used to the event data. With the detected corners from  the checkerboard we calculated a homography matrix to spatially align the image space from two sensors. 
+
+  \item \textbf{The first step is usually not sufficient to sync two cameras well enough to make it comparable with minimal error.} Homography is relatively easy to calculate, but it only maps point from a 2D surface to another. There are two source of error with this method. First, only points from the same surface will be aligned. But it would be very challenging for us to put the checkerboard on the exact depth of the surface of target object in the calibration stage. So there will always be a little spatial offset when we apply the homography transform to collected data. Second, homography only works for mapping points on a 2D surface to another 2D surface in corresponding depth. But a 3D scene may have stimulus from other depths, there is always a parallax error on these parts of the data.   
+
+  \item \textbf{Therefore, a second step is performed to use geometry of the optical chopper to fit ellipse for both data. Mapping the ellipse from one data to another provides a finer calibration.}
+
+\subsubsection{Temporal Synchronization}
+
+  \item \textbf{The temporal synchronization method also consists of two steps. First, both cameras are wired to the same analog discovery 2 to received synced external triggers.}
+
+  \item \textbf{Two cameras processed external triggers differently, so there will still be a temporal offset between the two cameras.The second step is to use the periodic feature from the signal itself to further calibrate the data to find the offset.}
+
+
+\subsubsection{Data Processing}
+
   \item \textbf{Throughout the pipeline, every free parameter is fixed by rule rather than estimated from the data being compared.} Kernel bandwidths, projection count, and the space-time unit conversion are set from sensor geometry or application physics, not fitted to the two sets under comparison, so a number computed under one condition is comparable to a number computed under another.
   
   \item \textbf{The measurement is defined for a single sensor at a time: it compares real recordings against a simulator's attempt to reproduce that same sensor.} Within a fixed sensor and configuration the values are directly comparable, which is what lets a simulator be tracked across stimulus conditions or several simulators be ranked against the same recordings; comparing values obtained on different sensors is outside the scope of the framework, since the kernel bandwidths and the space-time scale factor are anchored to the geometry of the sensor being modelled.

@@ -55,33 +55,30 @@
 
 \subsubsection{Spatial Alignment}
 
-  \item \textbf{The cameras are calibrated to be spatially aligned and temporally synced in two steps. The first steps includes using homography for spaitally alignment and external triggers for temporal synchronization.}. We first used a printed checkerboard to calibrate both cameras. The calibration process for the conventional camera followed the standard procedure to get the intrinsic matrix. But for the event camera, we used E2VID to convert event stream into frames, so that standard corner detection and intrinsic calibration algorithms can be used to the event data. With the detected corners from  the checkerboard we calculated a homography matrix to spatially align the image space from two sensors. 
+  \item \textbf{The cameras are calibrated to be spatially aligned in two steps. The first steps includes using homography for spaitally alignment and external triggers for temporal synchronization.}. We first used a printed checkerboard to calibrate both cameras. The calibration process for the conventional camera followed the standard procedure to get the intrinsic matrix. But for the event camera, we used E2VID to convert event stream into frames, so that standard corner detection and intrinsic calibration algorithms can be used to the event data. With the detected corners from  the checkerboard we calculated a homography matrix to spatially align the image space from two sensors. 
 
   \item \textbf{The first step is usually not sufficient to sync two cameras well enough to make it comparable with minimal error.} Homography is relatively easy to calculate, but it only maps point from a 2D surface to another. There are two source of error with this method. First, only points from the same surface will be aligned. But it would be very challenging for us to put the checkerboard on the exact depth of the surface of target object in the calibration stage. So there will always be a little spatial offset when we apply the homography transform to collected data. Second, homography only works for mapping points on a 2D surface to another 2D surface in corresponding depth. But a 3D scene may have stimulus from other depths, there is always a parallax error on these parts of the data.   
 
-  \item \textbf{Therefore, a second step is performed to use geometry of the optical chopper to fit ellipse for both data. Mapping the ellipse from one data to another provides a finer calibration.}
+  \item \textbf{Therefore, a second step is performed to use geometry of the optical chopper to fit ellipse for both data. Mapping the ellipse from one data to another provides a finer calibration.} The circular chopper disk appears as an ellipse in the camera view. We fit its boundary in the accumulated real and simulated events, then use the differences between the fitted ellipse centers, axis lengths, and orientations to estimate a correction for the remaining spatial mismatch. This correction maps the real events into the simulated-event coordinates. Because the alignment is estimated from the chopper disk, it applies to the target plane rather than correcting parallax throughout the scene.
 
 \subsubsection{Temporal Synchronization}
 
-  \item \textbf{The temporal synchronization method also consists of two steps. First, both cameras are wired to the same analog discovery 2 to received synced external triggers.}
-
-  \item \textbf{Two cameras processed external triggers differently, so there will still be a temporal offset between the two cameras.The second step is to use the periodic feature from the signal itself to further calibrate the data to find the offset.}
-
-
-\subsubsection{Data Processing}
-
-  \item \textbf{Throughout the pipeline, every free parameter is fixed by rule rather than estimated from the data being compared.} Kernel bandwidths, projection count, and the space-time unit conversion are set from sensor geometry or application physics, not fitted to the two sets under comparison, so a number computed under one condition is comparable to a number computed under another.
+  \item \textbf{Shared external triggers provide an initial temporal reference between the frame and event recordings.} An Analog Discovery 2 supplies trigger pulses to both cameras. The pulses control frame acquisition and are recorded as timestamped trigger markers by the event camera. These markers identify the corresponding recording interval, allowing the real event stream to be selected for comparison with the frame-based simulation. However, since the two cameras process exteral triggers differently. There is always an offset between the recorded data from different sensors.
   
-  \item \textbf{The measurement is defined for a single sensor at a time: it compares real recordings against a simulator's attempt to reproduce that same sensor.} Within a fixed sensor and configuration the values are directly comparable, which is what lets a simulator be tracked across stimulus conditions or several simulators be ranked against the same recordings; comparing values obtained on different sensors is outside the scope of the framework, since the kernel bandwidths and the space-time scale factor are anchored to the geometry of the sensor being modelled.
+  \item \textbf{A second temporal calibration step uses the periodic chopper signal to estimate the remaining offset between real and simulated events.} Events on the chopper disk are converted into polar angles around its center and averaged within time bins, separately for ON and OFF events. These angle signals are transformed into the frequency domain, where the phase difference at the dominant periodic frequency gives a temporal offset. Because the chopper signal repeats, the phase difference alone cannot tell whether the two recordings are offset by part of a cycle or by additional whole cycles. Cross-correlation gives an approximate time offset, which is used to select the matching cycle. We estimate the offset separately from ON and OFF events, take the average of these two estimates, and subtract it from all real-event timestamps.
   
 \end{itemize}
 
 \subsection{Event representation}
 
 \begin{itemize}
+
   \item \textbf{To measure distances, we are processing event data from stream to point cloud.} Events in a window become 3D points (x, y, s·t), with s the µs-per-pixel scale factor; ON and OFF events are separated into channels upstream, compared per-channel, then combined.
+  
   \item \textbf{To make the measurement interpretable, meaningful and to avoid having one dimension dominates the result.} We are making space and time commensurable. Any metric on (x, y, t) points needs a µs-per-pixel conversion. We anchor it in the application: the saccade main-sequence relation D = 2.2A + 21 yields \textasciitilde{}21–42 µs/px for our sensor geometry, a physically-motivated rather than data-fitted choice. The amplitude-duration form used here is the relation that remains close to linear over the amplitude range of interest, unlike the amplitude-peak-velocity form which saturates nonlinearly; note also that no single model of the main sequence is universally agreed, which is why the sensitivity check over the 21–42 µs/px range is reported rather than treated as optional. \cite{bahill1975mainsequence,carpenter1988movements,gibaldi2021saccade}
+  
   \item \textbf{Making data comparison in a fixed temporal window is better than comparing the whole dataset directly.} Window duration and placement policy; note that all downstream parameters are window-independent by construction (motivates the fixed-bandwidth choice below).
+  
 \end{itemize}
 
 \subsection{MMD}

@@ -81,7 +81,7 @@
   
   \item \textbf{The conversion ratio is determined by the case of study. We decided to use a rule based method to determine the ratio.} The ratio was anchored in the application. For example, we are mostly interested in the study of eye tracking data. Then the expected captured motions will mostly be  fixations, pursuits and saccades. We wanted to use the fastest motion as a reference to build the conversion. The saccade main-sequence relation D = 2.2A + 21 yields \cite{bahill1975mainsequence,carpenter1988movements,gibaldi2021saccade}. A typical large saccade is about 15 degrees large, making $A=15$. Then the duration $D=2.2 \times 15 + 21 = 54ms$. In an extreme case, it will cover the whole sensor image space, which is 1280 pixels horizontally base on the sensor. So the speed is 54/1280 = 42 microsecond per pixel. So the conversion rate is estimated to be $1/42$. 
   
-  \item \textbf{We will also split the event data into small windows for comparison for two reasons. First, data are usually calculated and processed in smaller batch in real applications. Second, For algorithms like maximum mean discrepancy(MMD) and sliced wasserstein distance, it will be computationally too expensive to compute with whole dataset.}
+  \item \textbf{We divide the event streams into short temporal windows to compare local event structure and limit computation.} We do this for two reasons. First, data are usually calculated and processed in smaller batch in real applications. Second, For algorithms like maximum mean discrepancy(MMD) and sliced wasserstein distance, it will be computationally too expensive to compute with whole dataset.
   
 \end{itemize}
 

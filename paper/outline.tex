@@ -88,36 +88,34 @@
 \subsection{MMD}
 
 \begin{itemize}
+  \item \textbf{MMD compares two event distributions through the average kernel similarities within and between their point sets.} We apply it to the scaled point sets from Section 3.2, with each event weighted equally within its set. For sets $X=\{u_i\}_{i=1}^{m}$ and $Y=\{v_j\}_{j=1}^{n}$, the estimator combines two within-set averages and one cross-set average:
+  \[
+    \widehat{\mathrm{MMD}}_u^{\,2}(X,Y)
+    = \frac{\sum_{i\ne j} k(u_i,u_j)}{m(m-1)}
+    + \frac{\sum_{i\ne j} k(v_i,v_j)}{n(n-1)}
+    - \frac{2\sum_{i=1}^{m}\sum_{j=1}^{n} k(u_i,v_j)}{mn}.
+  \]
+  Here, $m$ and $n$ are the event counts in the two sets, and $k$ is the kernel used to measure similarity between points. \cite{gretton2012kernel}
 
-  \item \textbf{Maximum Mean Discrepancy (MMD) is a statistical distance metric used to determine if two sets of data are drawn from the same underlying probability distribution.} Instead of comparing individual data points, MMD compares the global shape and structure of the two datasets. \cite{gretton2012kernel}
-  
-  \item \textbf{Concretely, MMD² is built from three averages of pairwise similarities: how similar the real points are to each other, how similar the synthetic points are to each other, and how similar the two sets are to each other.} If the two sets come from the same distribution, the cross-set similarity is as large as the within-set similarities and the three terms cancel; if they differ, the within-set terms dominate and MMD² grows. We use the unbiased estimator:
-  
-  \item \textbf{Every symbol above is defined as follows.} X = \{x₁, …, x\_m\} is the set of real events and Y = \{y₁, …, y\_n\} the set of synthetic events in the window being compared, each point being a 3D coordinate (x, y, s·t) as defined in 3.2; m and n are the number of real and synthetic points, which need not be equal; k(a, b) is the kernel, a similarity function returning a value near 1 when two points are close and near 0 when far apart; and the notation i ≠ j means the sum runs over distinct pairs only, excluding the case where a point is paired with itself. We use the Gaussian kernel k(a, b) = exp(−‖a − b‖² / 2σ²), in which ‖a − b‖ is the Euclidean distance between the two points and σ is the bandwidth, the length scale that sets what counts as "close"; the choice of σ is the subject of the next bullet.
-  
-  \item \textbf{The unbiased variant is required here because the biased alternative makes the measurement depend on how many events a recording happens to contain.} The biased estimator divides by m² and n² and includes the self-pairs i = j, for which the Gaussian kernel returns exactly 1; this adds a positive offset that shrinks as the sets grow rather than vanishing, so its value shifts with event count even when the underlying distributions are unchanged. Since event count is not held fixed across our conditions, and in particular rises with sensor noise, that offset would be confounded with the very difference the metric is meant to detect, and in practice produces a spurious U-shaped response as noise inflates the count. Excluding the diagonal removes the offset and makes the estimator unbiased for the true MMD². \cite{gretton2012kernel}
-  
-  \item \textbf{The implementation has a multi-kernel design with fixed bandwidths.} A small set of bandwidths anchored to sensor geometry (pixel pitch through sensor-scale structure), replacing the median heuristic, which is data- and window-duration-dependent and breaks cross-condition comparability.
-  
-  \item \textbf{Small bandwidths are necessary to resolve fine-scale structure, but they carry a failure mode that has to be stated: under added uniform noise the MMD² of a small kernel can decrease rather than increase.} With a small σ the kernel is effectively zero for any pair of points that are not close together, so uniformly distributed noise contributes near-zero similarity to every term while still inflating the pair counts, and the statistic can fall even though the two sets have genuinely become more different. This is the reason the bandwidth set spans several scales rather than reaching for the smallest kernel that resolves the structure of interest, and it is why the response of each kernel to controlled perturbation is characterised before the metric is used (4.1).
-  
+  \item \textbf{We use a Gaussian kernel to define similarity between events in the scaled space-time representation.} The kernel is $k(u,v)=\exp(-\|u-v\|^2/(2\sigma^2))$, where $\sigma$ controls how quickly similarity decreases with distance. A smaller bandwidth emphasizes nearby point relationships, while a larger bandwidth includes relationships over a broader spatial and temporal scale.
+
+  \item \textbf{We use the unbiased estimator of MMD squared to avoid the sample-size-dependent bias introduced by self-comparisons.} The within-set sums exclude each event's comparison with itself and use the corresponding denominators $m(m-1)$ and $n(n-1)$. This removes the diagonal bias but not sampling variation. The estimate can be negative near zero; the implementation retains this signed value alongside the distance $\sqrt{\max(\widehat{\mathrm{MMD}}_u^{\,2},0)}$. The signed squared estimate is used when examining the null baseline.
+
+  \item \textbf{We evaluate three fixed kernel scales separately to compare differences at different space-time scales.} The implementation specifies each scale by the distance $r$ at which kernel similarity equals $0.5$, using $r=3,15,75$ in the scaled coordinates. These correspond to $\sigma=r/\sqrt{2\ln 2}$, rather than $\sigma=3,15,75$. The three scales cover local to broader point relationships and remain fixed across comparisons instead of being fitted to each pair of event sets. Each produces a separate result; they are not combined into one score.
 \end{itemize}
 
 \subsection{SWD}
 
 \begin{itemize}
-  \item \textbf{Wasserstein distance (WD) measures the difference between two distributions as the minimum cost of transporting the mass of one onto the other.} Picture each point set as a pile of sand: the distance is the least total work needed to reshape the first pile into the second, where work counts both how much mass is moved and how far it travels. This makes it sensitive to how far apart the two distributions are geometrically, not only to whether they overlap, which is a different kind of sensitivity from the kernel similarity used by MMD.
-  \item \textbf{Computing WD directly in three dimensions is expensive, because it requires solving an optimal-transport problem between the two point sets.} In one dimension, however, the problem has a closed form: the optimal transport is simply to sort both sets and match them in order, so the distance can be read off from the sorted values in O(N log N) time. The sliced variant exploits this by reducing the 3D problem to many 1D ones.
-  \item \textbf{Sliced Wasserstein Distance (SWD) projects both point sets onto a random direction, computes the 1D Wasserstein distance between the projections, and averages over many directions.} Each projection collapses the 3D points onto a line, giving two sets of scalars whose Wasserstein distance is cheap to compute; averaging over enough directions recovers a meaningful distance between the original 3D distributions: \cite{bonneel2015sliced,flamary2021pot}
-  \item \textbf{Every symbol above is defined as follows.} X and Y are the real and synthetic point sets from 3.2, each point a 3D coordinate (x, y, s·t); θ\_ℓ is a unit vector giving the ℓ-th projection direction; θ\_ℓᵀX denotes the set of scalars obtained by projecting every point of X onto that direction; L is the number of projection directions used; W\_p is the 1D Wasserstein distance of order p between the two projected sets, computed by sorting and matching in order; and p is the order of the distance, with p = 2 the usual choice.
-  \item \textbf{The projection directions are drawn by Monte Carlo sampling, which makes the reported SWD an estimate rather than an exact quantity.} Because L directions are sampled at random from the sphere rather than covering it exhaustively, repeating the computation on the same data returns slightly different values, and the size of that spread is set by L.
-  \item \textbf{RESERVED: sampling-error analysis.} State how L was chosen, quantify the residual spread of SWD across repeated draws at that L, and show that the spread is small relative to the differences between conditions being reported, so that a change in SWD across conditions can be distinguished from projection noise.
+  \item \textbf{SWD compares the same event point sets by measuring their distributional differences along multiple projection directions.} Each set is projected onto a shared unit direction, and a one-dimensional Wasserstein distance is computed between the projected distributions, with equal weights within each set and total mass normalized to one. We use order $p=2$ and take the square root of the mean squared one-dimensional distances across directions. \cite{bonneel2015sliced,flamary2021pot}
+
+  \item \textbf{We use a fixed projection configuration to make the SWD comparisons reproducible.} The implementation uses 100 randomly sampled directions with a fixed seed of 0, so comparisons under the same configuration use the same directions. The finite projection set gives an approximation to SWD; fixing the seed makes the result reproducible but does not remove projection approximation error.
 \end{itemize}
 
 \subsection{Chamfer baseline}
 
 \begin{itemize}
-  \item \textbf{Chamfer distance provides a point-level baseline against which the distribution-level behavior of MMD and SWD can be evaluated.} It computes a symmetric nearest-neighbor distance on the same event representation and provides a comparison point for showing what a simpler point-set distance misses, including distributional structure and sensitivity to event density. \cite{fan2017pointset}
+  \item \textbf{Chamfer distance provides a nearest-neighbor baseline on the same scaled event point sets used by MMD and SWD.} Following its use for event-data comparison in PECS, we include it as a reference for evaluating the distribution-level methods. \cite{han2024pecs} Our implementation uses the sum of the mean nearest-neighbor Euclidean distances from $X$ to $Y$ and from $Y$ to $X$, without squaring the distances or dividing the two-direction sum by two. Applying it to the same point sets allows the evaluation tests to compare its responses with those of MMD and SWD without assuming in advance which method is better.
 \end{itemize}
 
 \subsection{Metric evaluation protocol}

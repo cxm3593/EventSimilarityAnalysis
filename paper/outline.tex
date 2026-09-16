@@ -19,9 +19,18 @@
   
   \item \textbf{But, because researchers are still working on a physically accurate sensor model \cite{graca2025sensormodel},  there is always a domain gap between real and simulated data, which degrades the performance of most models trained with synthetic data. Most existing simulators are validated qualitatively or against a specific set of downstream tasks rather than a common, direct measurement against ground truth real data \cite{tan2025carla,chen2024instance}.} This means realism claims can't be compared across methods on equal footing; recent learned metrics such as EQS \cite{chanda2025eqs} begin to close that gap, but they depend on features from a pretrained network rather than a physically interpretable, reproducible measurement.
 
-  \item \textbf{We propose a metric framework for directly quantifying the real-vs-synthetic event-data gap, introducing multi-kernel Maximum Mean Discrepancy \cite{gretton2012kernel} and Sliced Wasserstein Distance \cite{bonneel2015sliced,flamary2021pot}, evaluated against a Chamfer-distance baseline that was used in PECS \cite{han2024pecs}, and validated on calibrated data recorded for benchmarking purpose.} Benchmark data is collected with an optical-chopper with synced sensor, including a Prophesee EVK4 and a Mako U-130B. 
+
+  \item \textbf{Downstream performance shows how well synthetic data serve a particular task, but does not directly measure how closely they reproduce real sensor observations.} A direct comparison with recordings of the same stimulus would provide a separate assessment of simulator output and how it changes with parameter settings.
+  
+
+  \item \textbf{We propose a measurement framework for directly quantifying the real and simulated event streams under controlled conditions and characterizing how the resulting distances should be interpreted} The framework combines calibrated, paired recordings of a periodic stimulus with distribution-based comparisons using MMD and SWD, alongside a Chamfer-distance baseline. Controlled tests examine sampling variability, sensitivity to known changes, and the interpretation of real–simulated discrepancies.
+
+  \item \textbf{(Should add 1-2 paragraphs to justify the choice in the experiment. Why optical chopper and other decisions)}
   
   \item \textbf{Road map of the paper.} Briefly preview the section order (background, methodology including the framework overview, evaluation protocol, and the chopper results) so the reader knows what's coming before the detail begins.
+
+
+  
 \end{itemize}
 
 \section{Background}
@@ -97,17 +106,20 @@
   \]
   Here, $m$ and $n$ are the event counts in the two sets, and $k$ is the kernel used to measure similarity between points. \cite{gretton2012kernel}
 
-  \item \textbf{We use a Gaussian kernel to define similarity between events in the scaled space-time representation.} The kernel is $k(u,v)=\exp(-\|u-v\|^2/(2\sigma^2))$, where $\sigma$ controls how quickly similarity decreases with distance. A smaller bandwidth emphasizes nearby point relationships, while a larger bandwidth includes relationships over a broader spatial and temporal scale.
+  \item \textbf{To define these point similarities, we use a Gaussian kernel whose bandwidth sets the spatial and temporal scale of comparison.} The kernel is $k(u,v)=\exp(-\|u-v\|^2/(2\sigma^2))$, where $\sigma$ controls how quickly similarity decreases with distance. A smaller bandwidth emphasizes nearby point relationships, while a larger bandwidth includes relationships over a broader spatial and temporal scale.
 
-  \item \textbf{We use the unbiased estimator of MMD squared to avoid the sample-size-dependent bias introduced by self-comparisons.} The within-set sums exclude each event's comparison with itself and use the corresponding denominators $m(m-1)$ and $n(n-1)$. This removes the diagonal bias but not sampling variation. The estimate can be negative near zero; the implementation retains this signed value alongside the distance $\sqrt{\max(\widehat{\mathrm{MMD}}_u^{\,2},0)}$. The signed squared estimate is used when examining the null baseline.
+  \item \textbf{We use the unbiased estimator of MMD squared to remove the sample-size-dependent bias introduced by self-comparisons.} The within-set sums exclude each event's comparison with itself and use the corresponding denominators $m(m-1)$ and $n(n-1)$. This removes the diagonal bias but not sampling variation. The estimate can be negative near zero; the implementation retains this signed value alongside the distance $\sqrt{\max(\widehat{\mathrm{MMD}}_u^{\,2},0)}$. The signed squared estimate is used when examining the null baseline.
 
-  \item \textbf{We evaluate three fixed kernel scales separately to compare differences at different space-time scales.} The implementation specifies each scale by the distance $r$ at which kernel similarity equals $0.5$, using $r=3,15,75$ in the scaled coordinates. These correspond to $\sigma=r/\sqrt{2\ln 2}$, rather than $\sigma=3,15,75$. The three scales cover local to broader point relationships and remain fixed across comparisons instead of being fitted to each pair of event sets. Each produces a separate result; they are not combined into one score.
+  \item \textbf{We compare MMD across small, intermediate, and large kernel bandwidths to examine how the scale of comparison affects the measured differences. } The small and large bandwidths represent contrasting scales, emphasizing local point relationships and broader event structure, respectively. An intermediate bandwidth helps reveal how the response changes between these scales. The specific bandwidths and their selection criteria remain to be determined.
 \end{itemize}
 
 \subsection{SWD}
 
 \begin{itemize}
-  \item \textbf{SWD compares the same event point sets by measuring their distributional differences along multiple projection directions.} Each set is projected onto a shared unit direction, and a one-dimensional Wasserstein distance is computed between the projected distributions, with equal weights within each set and total mass normalized to one. We use order $p=2$ and take the square root of the mean squared one-dimensional distances across directions. \cite{bonneel2015sliced,flamary2021pot}
+
+  \item \textbf{Wasserstein distance compares two event distributions by measuring the minimum cost of transporting mass from one to the other.} Each event set is treated as a distribution with equal weight per event and total mass normalized to one. Transport cost depends on the distance between points in the scaled space-time representation.
+
+  \item \textbf{To reduce the computational cost of this comparison, we use sliced Wasserstein distance to compare one-dimensional projections of the event distributions.} Both point sets are projected onto the same directions, and a one-dimensional Wasserstein distance is computed along each direction. For order \(p=2\), the final value is the square root of the mean squared distances across projections.
 
   \item \textbf{We use a fixed projection configuration to make the SWD comparisons reproducible.} The implementation uses 100 randomly sampled directions with a fixed seed of 0, so comparisons under the same configuration use the same directions. The finite projection set gives an approximation to SWD; fixing the seed makes the result reproducible but does not remove projection approximation error.
 \end{itemize}
@@ -152,7 +164,20 @@
   \item \textbf{The resulting distances therefore describe how each generated dataset departs from the recorded EVK4 data under a specific simulator configuration, rather than providing an absolute ranking of simulator quality.} In particular, V2CE operates at a different internal resolution and may model a different sensor configuration, so its distance shows that its output is more or less different from the EVK4 recording without by itself showing that the simulator is universally better or worse.
 \end{itemize}
 
-
-
-
 \section{Evaluation}
+
+\subsection{Ruler test}
+
+\begin{itemize}
+    \item \textbf{A measured distance allows us to compare event streams, but we need a reference to understand how large the difference is.} Knowing that simulator B has a larger distance from real data than simulator A establishes an ordering, but provides little context for the magnitude of that difference.
+
+    \item \textbf{We establish this reference by measuring the distances produced by controlled temporal offsets in the recorded data itself.} Compare a reference segment with progressively shifted segments from the same recording. This gives a ruler curve connecting a known offset to the measured distance, with a repeating response as the chopper pattern returns to alignment.
+
+    \item \textbf{To make this ruler easier to interpret across recording speeds, we can express the offsets in rotation degrees.} The same temporal offset represents different amounts of rotation at different speeds, stretching or compressing the curves along the time axis. Degrees place the recordings on a common 0–360° scale and describe the displacement in terms of the stimulus. Both representations contain the same information for a known rotation speed.
+
+    \item \textbf{Viewed on this common angular scale, the ruler curves show how consistently each metric responds to displacement across the five recordings.} Present the combined figure here. MMD and SWD show approximately overlapping responses over much of the range, while Chamfer retains substantial differences in magnitude between speeds.
+
+    \item \textbf{The shape of these curves also determines where the ruler provides a useful displacement reference.} Small-kernel MMD quickly reaches a plateau, while MMD-RBF75 and SWD respond over a broader angular range. Because the response repeats, an equivalent displacement must be read from a specified rising branch; flatter regions make that conversion less precise.
+
+    \item \textbf{We then use this reference to interpret distances measured in the modifier and simulator tests.}
+\end{itemize}

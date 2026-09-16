@@ -27,7 +27,8 @@ Use `manuscript` for a manuscript-only PDF and page count.
 - `paper/references.bib`: the shared BibTeX database; cite with `\cite{key}`.
 - `paper/preamble.tex`: shared packages and Unicode support.
 
-The manuscript currently contains clearly marked placeholders, not a drafted paper.
+Sections 1 and 2 contain an initial prose draft following the outline. The title,
+author information, and abstract remain provisional or marked as placeholders.
 Only `main.tex` contains a document class and document environment. Add later
 sections as content files and input them from `paper/manuscript.tex`.
 

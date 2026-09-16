@@ -1,34 +1,58 @@
-\documentclass[10pt]{article}
+% Compile with pdfLaTeX in Overleaf. Change this one setting:
+% outline = working outline; manuscript = IEEE journal draft; both = outline + draft.
+\def\paperview{both}
 
-\usepackage[margin=1in]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb,bm}
-\usepackage{cite}
-\usepackage[protrusion=true,expansion=false]{microtype}
+\newif\ifshowoutline
+\newif\ifshowmanuscript
+\def\outlineview{outline}
+\def\manuscriptview{manuscript}
+\def\bothview{both}
+\ifx\paperview\outlineview
+  \showoutlinetrue
+\else\ifx\paperview\manuscriptview
+  \showmanuscripttrue
+\else\ifx\paperview\bothview
+  \showoutlinetrue
+  \showmanuscripttrue
+\else
+  \errmessage{Invalid paperview: use outline, manuscript, or both}
+\fi\fi\fi
 
-\usepackage[hidelinks]{hyperref}
-
-\DeclareUnicodeCharacter{00B2}{\ensuremath{{}^{2}}}
-\DeclareUnicodeCharacter{00B5}{\ensuremath{\mu}}
-\DeclareUnicodeCharacter{00B7}{\ensuremath{\cdot}}
-\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
-\DeclareUnicodeCharacter{03B8}{\ensuremath{\theta}}
-\DeclareUnicodeCharacter{03C3}{\ensuremath{\sigma}}
-\DeclareUnicodeCharacter{1D40}{\ensuremath{{}^{\mathsf T}}}
-\DeclareUnicodeCharacter{2016}{\ensuremath{\Vert}}
-\DeclareUnicodeCharacter{2026}{\ldots}
-\DeclareUnicodeCharacter{2080}{\ensuremath{{}_{0}}}
-\DeclareUnicodeCharacter{2081}{\ensuremath{{}_{1}}}
-\DeclareUnicodeCharacter{2113}{\ensuremath{\ell}}
-\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
-\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+\ifshowmanuscript
+  \documentclass[10pt,journal]{IEEEtran}
+\else
+  \documentclass[10pt]{article}
+\fi
+\input{paper/preamble}
 
 \begin{document}
 
-\input{paper/outline}
+\ifshowoutline
+  \onecolumn
+  \begingroup
+  \renewcommand{\thesection}{\arabic{section}}
+  \renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+  \renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+  % Distinct PDF destinations when section numbering restarts in the manuscript.
+  \renewcommand{\theHsection}{outline.\arabic{section}}
+  \section*{Working outline}
+  \input{paper/outline}
+  \endgroup
+\fi
 
-\bibliographystyle{ieeetr}
+\ifshowmanuscript
+  \clearpage
+  \setcounter{section}{0}
+  \setcounter{equation}{0}
+  \setcounter{figure}{0}
+  \setcounter{table}{0}
+  \setcounter{footnote}{0}
+  \renewcommand{\theHsection}{manuscript.\arabic{section}}
+  \twocolumn
+  \input{paper/manuscript}
+\fi
+
+\bibliographystyle{IEEEtran}
 \bibliography{paper/references}
 
 \end{document}

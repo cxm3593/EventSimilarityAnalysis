@@ -29,7 +29,7 @@
 
   \item \textbf{Under a chosen configuration, the measurement should respond to differences introduced during data acquisition and event generation.} To examine this, we apply controlled perturbations to real recordings, introducing selected differences with known magnitudes. The perturbations include spatial translation, scaling, temporal offset, subsampling and uniform noise. Comparing the original and perturbed data lets us determine whether the measurement responds to each change and how its response varies with their magnitude.
 
-  \item \textbf{(Should add 1-2 paragraphs to justify the choice in the experiment. Why optical chopper and other decisions)}
+  \item \textbf{These comparisons require paired real-event and image recordings of a repeatable stimulus.} We use an event camera and a conventional frame camera that are synchronized to capture events and images. The image sequences provide input to event simulators, while the calibration process establishes spatial and temporal correspondence with the real events. Repeated observations also let us characterize how much real recordings differ under nominally identical conditions. We therefore use an optical chopper, whose adjustable rotation speed and repeating structure support both types of comparison across different motion speeds.
   
   \item \textbf{Road map of the paper.} Briefly preview the section order (background, methodology including the framework overview, evaluation protocol, and the chopper results) so the reader knows what's coming before the detail begins.
 
@@ -43,14 +43,25 @@
 
 \begin{itemize}
   \item \textbf{The ideal DVS pixel model is a brightness change detector.} Each pixel continuously monitors log-brightness; when the change since the last event crosses a contrast threshold θ, it emits an ON or OFF event and enters a brief refractory period. This gives the generative model that both the sensor and any faithful simulator must follow. \cite{lichtsteiner2008dvs,gallego2022event}
+  
   \item \textbf{Real sensors depart from this ideal model in the first place because θ is not a quantity the user sets directly: bias settings are specific to systems, not thresholds that are directly interpretable with physical measurements.} The user-facing bias settings (e.g., bias\_diff\_on/off) are currents that shift circuit operating points, and their mapping to the effective θ depends on factory trim, temperature, and photocurrent, so a bias value cannot be read as a threshold value. \cite{graca2023biasing}
+  
   \item \textbf{Beyond the threshold itself, several further non-idealities keep a physically accurate camera model out of reach.} Pixel-to-pixel threshold mismatch, intensity-dependent bandwidth and latency, and background-activity noise are the dominant departures from the ideal model, and they are exactly the effects a simulator tries to reproduce and a similarity metric must therefore be sensitive to. \cite{hu2021v2e,graca2021noise}
+  
   \item \textbf{Reproducing these effects faithfully is the simulator's task; measuring whether it has done so requires a representation of the event stream that is neutral to any particular application, and events lend themselves naturally to being treated as spatiotemporal point sets.} A recording is a set of (x, y, t, p) tuples, which can be viewed as samples drawn from an underlying distribution over a 3D space-time volume rather than as a signal to be decoded, and this shift in viewpoint is what allows distribution-distance machinery to apply directly to raw events.
+  
   \item \textbf{Once both real and synthetic recordings are point sets from an underlying distribution, measuring the domain gap becomes a two-sample problem.} Given a real event set X and a synthetic set Y from the same stimulus, "how realistic is Y?" turns into the statistical question "were X and Y drawn from the same distribution?", which can be answered from the event data alone without training or evaluating any downstream task.
+  
   \item \textbf{The first tool for answering that question is Maximum Mean Discrepancy (MMD), which compares distributions through their mean embeddings in a kernel space.} Each distribution is mapped into a reproducing kernel Hilbert space and represented by the mean of its embedded samples; MMD is the distance between those two means, so it captures differences in the full structure of the distributions rather than in any single summary statistic. \cite{gretton2012kernel}
+  
   \item \textbf{The second tool, Wasserstein distance, measures the same discrepancy through mass transport rather than kernel embeddings.} Wasserstein distance is the minimal "work" required to move one distribution's mass onto the other's, and its sliced variant (SWD) replaces the expensive high-dimensional transport problem with an average of one-dimensional Wasserstein distances taken over many projection directions, which is what makes it computable at event-stream scale. \cite{bonneel2015sliced,flamary2021pot}
+  
   \item \textbf{Against these two distribution-level metrics we set Chamfer distance, a point-level baseline that makes no distributional assumption at all.} Chamfer distance sums the distance from each point in one set to its nearest neighbour in the other, which is intuitive and widely used in point-cloud work, but it compares point positions rather than distributions and so is included here as the baseline our distribution-level metrics are judged against. \cite{fan2017pointset}
+  
   \item \textbf{Spike-train metrics from computational neuroscience, such as the van Rossum distance and SPIKE-distance, are a natural-seeming alternative but do not transfer to this setting.} The van Rossum distance requires convolving every spike train with a kernel and integrating pairwise, which is computationally prohibitive at the event counts a 1280×720 sensor produces, while SPIKE-distance is formulated around the timing structure of one-dimensional trains and does not extend naturally to a stream whose spatial arrangement carries the signal. \cite{vanrossum2001novel,kreuz2013monitoring}
+
+  \item \textbf{These methods provide different ways to compare event distributions, but how their measured distances relate to physical differences in our recordings still needs to be examined and verified experimentally.} We want the measurement to reflect spatial and temporal differences and background noise that change the event distribution, but remain relatively insensitive to changes in event density that do not change the underlying distribution.
+  
 \end{itemize}
 
 \section{Methodology}
@@ -64,7 +75,7 @@
   
   \item \textbf{The first stage is to record event data and frame video data that are comparable with spatial alignment and temporal synchronization} The event camera is Prophesee EVK 4 and the conventional frame camera is Mako U-130b. 
 
-  \item \textbf{For validation the stimulus is an optical chopper, chosen because it produces a periodic signal at a known, tunable frequency.} Each trial contains many nominally identical periods, which supplies repeated samples of the same stimulus for estimating variability and a noise floor, and sweeping the chopper frequency gives a single physically controlled variable along which the metrics can be tested. The chopper motor is free-running rather than phase-locked to the cameras, so periods are recovered from its reference output rather than assumed from frame count.
+  \item \textbf{For validation the stimulus is an optical chopper, chosen because it produces a periodic signal at a known, tunable frequency.} Each trial contains many nominally identical periods, which supplies repeated samples of the same stimulus for estimating variability and a noise floor, and sweeping the chopper frequency gives a single physically controlled variable along which the metrics can be tested. The chopper motor is free-running rather than phase-locked to the cameras, so periods are recovered from its reference output rather than assumed from frame count. We selected an optical chopper for stable rotation at the low speeds required by our experiments. The fan we considered was less stable in this range, while a freely swinging pendulum loses amplitude over time and its speed varies throughout each cycle.
 
 \subsubsection{Spatial Alignment}
 

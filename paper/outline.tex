@@ -160,18 +160,39 @@
 
 \section{Evaluation}
 
-\subsection{Ruler test}
+\subsection{Perturbation Study}
 
 \begin{itemize}
-    \item \textbf{A measured distance allows us to compare event streams, but we need a reference to understand how large the difference is.} Knowing that simulator B has a larger distance from real data than simulator A establishes an ordering, but provides little context for the magnitude of that difference.
 
-    \item \textbf{We establish this reference by measuring the distances produced by controlled temporal offsets in the recorded data itself.} Compare a reference segment with progressively shifted segments from the same recording. This gives a ruler curve connecting a known offset to the measured distance, with a repeating response as the chopper pattern returns to alignment.
+  \item \textbf{With the metrics and comparison methods defined, we use controlled perturbations to evaluate how the candidate measurements capture selected differences in event data.} Although these perturbations cannot cover every possible differences, we can learn the responses with known changes in a variety of magnitudes. We expect the measurements to respond consistently to changes in spatial-temporal structure and added noise, while remaining relatively insensitive to changes in the sampling event density which do not change the underlying distribution.
 
-    \item \textbf{To make this ruler easier to interpret across recording speeds, we can express the offsets in rotation degrees.} The same temporal offset represents different amounts of rotation at different speeds, stretching or compressing the curves along the time axis. Degrees place the recordings on a common 0–360° scale and describe the displacement in terms of the stimulus. Both representations contain the same information for a known rotation speed.
+\end{itemize}
 
-    \item \textbf{Viewed on this common angular scale, the ruler curves show how consistently each metric responds to displacement across the five recordings.} Present the combined figure here. MMD and SWD show approximately overlapping responses over much of the range, while Chamfer retains substantial differences in magnitude between speeds.
+\subsubsection{Spatial Translation and Spatial Scaling}
 
-    \item \textbf{The shape of these curves also determines where the ruler provides a useful displacement reference.} Small-kernel MMD quickly reaches a plateau, while MMD-RBF75 and SWD respond over a broader angular range. Because the response repeats, an equivalent displacement must be read from a specified rising branch; flatter regions make that conversion less precise.
+\begin{itemize}
 
-    \item \textbf{We then use this reference to interpret distances measured in the modifier and simulator tests.}
+    \item  \textbf{We first test how the metrics respond to spatial translation and scaling.} Translation shifts all events equally in x and y by 0–25 pixels per axis. Scaling contracts or expands the pattern around the calibrated centre by factors of 0.90–1.20. Both preserve timestamps and event counts. We expect larger spatial changes to produce larger distances.
+
+    \item  \textbf{Spatial translation and scaling generally produce larger distances as the perturbation magnitude increases.} SWD shows an approximately linear response to both changes, with closely overlapping curves across the five recordings.
+
+    \item \textbf{MMD’s response varies with kernel bandwidth.} Under spatial translation, the small-kernel response rises rapidly before approaching a plateau, while larger kernels continue increasing over more of the tested range. Under scaling, some configurations report zero distance for the smallest changes, followed by an increasing response. Larger-kernel MMD shows a response shape more similar to SWD, with closely aligned curves across recordings over much of the range.
+
+    \item \textbf{Chamfer also responds to both spatial changes, but the same perturbation produces larger distances in the slower recordings than in the faster recordings.} Within the fixed-duration windows, faster recordings generally contain more events and cover a larger angular displacement. Denser sampling can provide closer nearest neighbours, reducing Chamfer distance for the same applied perturbation. This provides a plausible explanation for the separation between curves, although this comparison does not isolate the effects of event count and motion extent.
+    
+\end{itemize}
+
+
+\subsubsection{Spatial Jitter}
+
+\begin{itemize}
+
+    \item \textbf{Spatial jitter applies an random offset to each event individually, the random number is generated between 0 and a celling at each step.} This random offsets are only applied to x and y in spatial coordinates, with a maximum magnitude from 0 to 16 pixels. Timestamps and event counts remain unchanged.
+
+    \item \textbf{MMD values are close to zero at smaller jitter magnitudes, and MMD distances with smaller kernels start responding at lower magnitudes.} Smaller kernels respond to weaker jitter, while larger kernels remain less responsive over the same range. The kernel size should therefore reflect the scale of differences we want to measure.
+
+    \item \textbf{SWD responds to introduced differences at smallest jitter magnitudes tested, and the distance increases at a higher rate as jitter becomes larger. }
+
+    \item \textbf{Chamfer distance shows a similar response to spatial translation, with a rapid initial increase followed by a more gradual rise. The increasing rate differs across recordings.}
+
 \end{itemize}

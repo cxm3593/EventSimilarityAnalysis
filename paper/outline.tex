@@ -215,6 +215,14 @@
     
 \end{itemize}
 
-\subsubsection{}
+\subsubsection{Uniform noise}
+
+\begin{itemize}
+    \item \textbf{Uniform noise adds events without removing or modifying the original events.} Noise events are sampled uniformly over the sensor area and each window’s time interval. The number added ranges from 0% to 50% of the original event count. Adding this noise changes the original event distribution.
+
+    \item \textbf{SWD and Chamfer distances increase throughout the noise sweep, while MMD’s response depends on kernel scale}. The medium and large kernels show increasing distances at higher noise levels. The smallest kernel remains at zero across all tested levels.
+
+    \item \textbf{The small-kernel MMD response reflects the sparsity of the uniform noise}. Because the added events are spread over the whole sensor area and time interval, most pairs involving noise events have very low kernel similarity at this scale. These events contribute little to the similarity sums but still enter the averages used to calculate MMD. In an earlier test, we found that adding uniform noise could even decrease the distance for a small-kernel MMD.
+\end{itemize}
 
 \subsubsection{}

@@ -168,6 +168,13 @@
 
 \end{itemize}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{paper/Images/Perturbation_figure_all.png}
+    \caption{All perturbation figures combined.}
+    \label{fig:Perturbation_figure_all}
+\end{figure}
+
 \subsubsection{Spatial Translation and Spatial Scaling}
 
 \begin{itemize}
@@ -196,5 +203,18 @@
     \item \textbf{Chamfer distance shows a similar response to spatial translation, with a rapid initial increase followed by a more gradual rise. The increasing rate differs across recordings.}
 
 \end{itemize}
+
+\subsubsection{Subsampling}
+
+\begin{itemize}
+    \item \textbf{Subsampling reduces the number of events without changing the retained events’ coordinates or timestamps.} We compare each full reference window with random subsets retaining 100% down to 25% of its events. Uniform random subsampling preserves the expected normalized event distribution, while individual subsets introduce variation in how that distribution is represented.
+
+    \item \textbf{The plotted mean MMD distances remain close to zero over most of the subsampling sweep.} The largest kernel shows a small increase at the strongest subsampling level, where only 25% of events remain. This establishes an observed dependence on kernel scale in this experiment.
+
+    \item \textbf{SWD and Chamfer distances increase as fewer events are retained, with different responses across recordings.} Thus, the same retained fraction can produce different distances depending on the reference recording. Equal numerical distances should therefore not automatically be interpreted as equal subsampling severity across recordings. Differences between recordings may involve both event density and motion within each window, so the separation between curves cannot be attributed to density alone.
+    
+\end{itemize}
+
+\subsubsection{}
 
 \subsubsection{}

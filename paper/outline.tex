@@ -225,4 +225,28 @@
     \item \textbf{The small-kernel MMD response reflects the sparsity of the uniform noise}. Because the added events are spread over the whole sensor area and time interval, most pairs involving noise events have very low kernel similarity at this scale. These events contribute little to the similarity sums but still enter the averages used to calculate MMD. In an earlier test, we found that adding uniform noise could even decrease the distance for a small-kernel MMD.
 \end{itemize}
 
-\subsubsection{}
+\subsubsection{Temporal Offset}
+
+\begin{itemize}
+    \item \textbf{Temporal offset compares each 5 ms window with a window at a given offset later in the same recording.} The reference period is the first full chopper rotation. Offsets range from 0 to 360 degrees of rotation and are converted to time using each recording's measured rotation period.
+
+    \item \textbf{All metrics vary periodically with the offset, with minima at every quarter rotation.} At 360 degrees the distance drops close to zero but does not reach it, indicating a noise floor between recorded rotations. The 180-degree minimum is higher because the two apertures are not completely symmetric.
+
+    \item \textbf{MMD's response depends strongly on kernel size.} Small-kernel MMD saturates within about 5 degrees and stays flat until the next minimum, so it separates aligned from misaligned windows but not the size of the offset. Large-kernel MMD rises and falls across each quarter rotation, peaking at 45 degrees.
+
+    \item \textbf{SWD curves overlap across recordings, while Chamfer curves separate by chopper speed.} Chamfer distance is largest for the slowest recording, F1, and smallest for the fastest, F5. This follows the same event-density ordering seen under the spatial perturbations.
+\end{itemize}
+
+\subsubsection{Summary of Perturbation Responses}
+
+\begin{itemize}
+    \item \textbf{As expected, SWD and MMD respond to changes in spatial-temporal structure and to added noise, but they differ in the range of their responses.} SWD increases from the smallest tested magnitudes, with similar curves across recordings. MMD's usable range is set by its kernel. The small kernel saturates early and misses uniform noise, while the large kernel barely registers jitter.
+
+    \item \textbf{A major distinction is in the subsampling test, where MMD remains close to zero, while SWD and Chamfer increase as events are removed.} Since subsampling preserves the underlying distribution, little response is expected. MMD shows this because its unbiased estimator removes the sample-size-dependent bias. In contrast, SWD and Chamfer also respond to the number of events, more strongly in the slower recordings, which have both fewer events and less motion per window.
+
+    \item \textbf{Chamfer distance responds to the introduced differences, but for most perturbations its response to the same change differs between recordings.} We included it for comparison with previous work \cite{han2024pecs}, but since it rarely adds information beyond SWD and MMD, we suggest using it as an independent verification rather than as one of the main metrics.
+
+    \item \textbf{SWD and MMD complement each other, as SWD has no scale parameter while MMD can be tuned to a chosen level of detail.} SWD can be applied without justifying a choice of scale, which makes it suitable as a calibration reference. However, it cannot focus on a particular level of detail, and its response also depends on the event count and motion per window. MMD is largely insensitive to subsampling, but a suitable kernel is difficult to choose without scanning many values.
+
+    \item \textbf{We therefore recommend using SWD and MMD together, with SWD guiding the choice of MMD kernels.} A large kernel is first chosen so that its response follows SWD under translation, scaling and temporal offset, giving a coarse-scale measurement that agrees with SWD while remaining insensitive to subsampling. Smaller kernels then examine differences in local detail.
+\end{itemize}

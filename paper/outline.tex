@@ -7,7 +7,7 @@
 \begin{itemize}
   \item \textbf{Event cameras have moved from a research curiosity to commercial deployment in robotics, automotive, and AR/VR, driven by demands for low latency and high dynamic range \cite{gallego2022event}.} This growing adoption spans several distinct application clusters: SLAM and obstacle avoidance for robotics spatial awareness \cite{vidal2018ultimate}, perception for autonomous driving and driver-assistance systems in automotive \cite{maqueda2018steering}, and low-power always-on eye tracking for AR/VR \cite{angelopoulos2021gaze}, applications where conventional frame-based sensors struggle to keep up with fast motion or extreme lighting.
   
-  \item \textbf{Unlike a frame camera that samples all pixels at a fixed rate, a DVS pixel independently and asynchronously emits an "event" whenever its log-brightness changes by a threshold amount, producing a stream of (x, y, t, polarity) tuples \cite{lichtsteiner2008dvs,gallego2022event}.} This per-pixel, change-triggered operating principle is the mechanism behind every property discussed next, and it is also why event data cannot simply be handled with tools built for frames.
+  \item \textbf{Unlike a frame camera that samples all pixels at a fixed rate, a DVS pixel independently and asynchronously emits an "event" whenever its log-brightness changes by a threshold amount, producing a stream of (x, y, t, polarity) tuples \cite{lichtsteiner2008dvs,gallego2022event}.} This per-pixel, change-triggered operating principle is the mechanism behind every property discussed next, and it is also why event data cannot simply be handled with tools built for frames.                                                            
   
   \item \textbf{As a result of this sensor design, event cameras exhibit unique features: microsecond temporal resolution, high dynamic range, low power consumption, and no motion blur in traditional sense. But it also has also an output format that conventional vision algorithms can't consume directly \cite{gallego2022event}. Machine learning algorithms are popular options to process event data.} These properties let event cameras operate reliably in conditions that defeat frame-based sensors, capturing fast motion without blur and remaining usable in scenes with extreme contrast between shadow and highlight, but the same asynchronous, sparse output that enables this performance has no fixed grid or sampling rate, so it cannot be fed directly into vision algorithms built around dense image frames.
   
@@ -250,3 +250,35 @@
 
     \item \textbf{We therefore recommend using SWD and MMD together, with SWD guiding the choice of MMD kernels.} A large kernel is first chosen so that its response follows SWD under translation, scaling and temporal offset, giving a coarse-scale measurement that agrees with SWD while remaining insensitive to subsampling. Smaller kernels then examine differences in local detail.
 \end{itemize}
+
+
+\subsection{Simulator Study}
+
+\subsubsection{Comparison Setup}
+
+\textbf{Real recordings are compared with events that v2e and V2CE generate from the same calibrated frame video.} Both simulators take the 30 fps video after spatial calibration, and their events are masked with the same chopper region as the real events. Each real 5 ms window is compared with the simulated window at the same phase of the rotation, using the feature scaling and metrics from the perturbation study, with Chamfer distance kept as an independent verification.
+
+\textbf{The comparison between different rotations of the same real recording sets the noise floor.} It gives the distance expected between nominally identical observations, so a simulator can only be considered close to real data relative to this floor.
+
+\textbf{The perturbation results provide a common reference for reading these distances.} For each metric, they give the distance produced by a known change, such as a degree of rotation, a pixel of translation, a percent of scaling or a percent of added noise. At five degrees of rotation, for example, SWD and large-kernel MMD both give the same distance as about 13 pixels of translation along each axis or 12 percent scaling. A simulator's distance can then be expressed as the equivalent magnitude of each change, and a table lists these conversions.
+
+\textbf{The equivalents depend on the metric for changes that are not displacements.} At five degrees, SWD gives the same distance as adding under 1 percent uniform noise, while large-kernel MMD requires about 32 percent. Jitter of up to 16 pixels does not reach the distance of one degree of rotation for either metric.
+
+\textbf{Event rates are reported separately from the distances.} Relative to the real camera, v2e generates 2.7 to 3.0 times as many events and V2CE 5 to 7 percent. Since MMD compares normalized distributions, differences in rate are reported alongside the distances rather than read from them.
+
+\subsubsection{v2e}
+
+v2e is run with its default sensor parameters. Only the output resolution, the 30 fps input frame rate and a 1 ms timestamp resolution, which sets how finely it interpolates between frames, are specified.
+
+\textbf{Distances from v2e remain well above the noise floor for SWD and large-kernel MMD in every recording.} Its SWD corresponds to about 6 to 8 degrees of rotation, 15 to 20 pixels of translation or 14 to 18 percent scaling, compared with about 0.5 to 3 degrees for the floor. Large-kernel MMD gives smaller but consistent equivalents of about 4 to 6 degrees, 10 to 15 pixels or 10 to 15 percent.
+
+\textbf{The equivalent rotation changes little from F1 to F4 and rises slightly at F5, although the wheel turns from 6 to 30 degrees between input frames.} The difference between v2e and the real recordings therefore does not grow in proportion to the motion that v2e has to interpolate.
+
+\subsubsection{V2CE}
+
+\textbf{V2CE is included as a second simulator with a different design. It is a learned model that predicts events from consecutive frames, designed for a 346 by 260 pixel sensor, and it has no sensor parameters such as contrast thresholds to set.} It processes the video at 462 by 260 pixels, and its events are mapped back to the full image plane for comparison.
+
+V2CE generates far fewer events, but neither its lower resolution nor its event count explains its distance. Snapping real events onto V2CE's pixel grid leaves SWD and MMD unchanged, and reducing the real events to V2CE's count raises SWD by 2 to 4 without changing MMD. Comparing both at V2CE's resolution, with the parameters scaled accordingly, gives the same result.
+
+\subsection{Discussion}
+

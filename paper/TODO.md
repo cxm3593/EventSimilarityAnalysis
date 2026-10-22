@@ -18,7 +18,7 @@ Tick an item by changing `[ ]` to `[x]`.
 
 | Item | Section | Notes |
 |---|---|---|
-| [ ] Radiometric calibration of the scene | Methodology, Framework Overview | Report only, so the scene can be reproduced. It does not change the v2e or V2CE data. Data: `Data/Radiometric_Camera_Calib_08062026` |
+| [ ] Radiometric calibration of the scene | Methodology, Framework Overview | Done. Need to review and report only, so the scene can be reproduced. It does not change the v2e or V2CE data. Data: `Data/Radiometric_Camera_Calib_08062026` |
 | [ ] Kernel bandwidths and how they were chosen | Methodology, MMD | 3, 15 and 75 px. The outline still says "remain to be determined" |
 | [ ] Choice of parameters | Methodology, Choice of Parameters | Space-time scale, window length, kernel bandwidth: what they are, how they affect results, SWD-guided choice of MMD kernels |
 | [ ] Uncertainty of the perturbation responses | Evaluation, Perturbation Study | The whole-recording noise floor run can serve as the basis |

@@ -47,11 +47,45 @@ We considered two ways to set this conversion. The first normalizes each axis gl
 \subsection{Maximum Mean Discrepancy}
 \label{sec:mmd}
 
+% --- To be edited myself ---
+
+MMD compares two event distributions through the average kernel similarity within and between their point sets~\cite{gretton2012kernel}. For two windows with scaled point sets $X=\{u_i\}_{i=1}^{m}$ and $Y=\{v_j\}_{j=1}^{n}$, with every event weighted equally, we use the unbiased estimator
+\begin{equation}
+\begin{split}
+  \widehat{\mathrm{MMD}}_u^{\,2}(X,Y) = {}& \frac{1}{m(m-1)} \sum_{i \ne i'} k(u_i,u_{i'}) \\
+  &+ \frac{1}{n(n-1)} \sum_{j \ne j'} k(v_j,v_{j'}) \\
+  &- \frac{2}{mn} \sum_{i=1}^{m} \sum_{j=1}^{n} k(u_i,v_j),
+\end{split}
+\label{eq:mmd}
+\end{equation}
+
+where $k$ is the kernel that measures the similarity between two points. The within-set sums exclude each event's comparison with itself. Including it would add about $1/m + 1/n$ to the estimate, so two sets drawn from the same distribution would appear to differ according to their numbers of events. The unbiased estimate can be negative when the two distributions are close. We report the distance $\sqrt{\max(\widehat{\mathrm{MMD}}_u^{\,2},0)}$, and keep the signed estimate for statistics over many comparisons, where setting negative values to zero would bias the result upward.
+
+The similarity between points is measured with a Gaussian kernel, whose width sets the scale at which differences between events contribute to MMD. The kernel is $k(u,v)=\exp\!\left(-\|u-v\|^2/(2\sigma^2)\right)$. Instead of setting $\sigma$ directly, we specify the distance $d$ at which the similarity falls to one half, which gives $\sigma = d/\sqrt{2\ln 2} \approx 0.85\,d$. Because the timestamps are scaled by $s$, $d$ applies to space and time alike: with $d = 15$~pixels, a displacement of 15 pixels and a time difference of 630~\textmu s both reduce the similarity to one half. We use three kernels, with $d = 3$, 15, and 75~pixels ($\sigma \approx 2.5$, 12.7, and 63.7~pixels), to compare local detail with broader event structure. Their choice is discussed in Section~\ref{sec:parameters}.
+
 \subsection{Sliced Wasserstein Distance}
 \label{sec:swd}
 
+% --- To be edited myself ---
+
+SWD compares two event distributions through the cost of transporting one onto the other along many one-dimensional projections~\cite{bonneel2015sliced}. Each point set is treated as a distribution with equal weight per event, and both are projected onto the same $L$ unit directions $\theta_l$ in the scaled space--time. Along each direction, the Wasserstein distance between the projected values is computed from their sorted order, which is far cheaper than transport in the original three dimensions. With order $p = 2$,
+\begin{equation}
+  \mathrm{SWD}_2(X,Y) = \left( \frac{1}{L} \sum_{l=1}^{L} W_2^2\!\left(\theta_l^{\top}X,\ \theta_l^{\top}Y\right) \right)^{1/2},
+  \label{eq:swd}
+\end{equation}
+where $\theta_l^{\top}X$ denotes the projected values of the points in $X$. We use $L = 100$ directions drawn at random with a fixed seed, as implemented in the Python Optimal Transport library~\cite{flamary2021pot}, so every comparison uses the same directions. A finite set of directions only approximates SWD, and the fixed seed makes the result reproducible without removing this approximation error. Unlike MMD, SWD has no scale parameter, and its value is a distance in the scaled space, measured in pixels.
+
 \subsection{Chamfer Distance}
 \label{sec:chamfer}
+
+% --- To be edited myself ---
+
+Chamfer distance compares the two point sets through nearest neighbors~\cite{fan2017pointset}. We apply it to the same scaled point sets as MMD and SWD, and use the sum of the mean nearest-neighbor Euclidean distances in both directions,
+\begin{equation}
+  \mathrm{CD}(X,Y) = \frac{1}{m}\sum_{i=1}^{m} \min_{j} \|u_i - v_j\| + \frac{1}{n}\sum_{j=1}^{n} \min_{i} \|v_j - u_i\|.
+  \label{eq:chamfer}
+\end{equation}
+The distances are not squared, and the sum is not divided by two. This is the same form that PECS used to compare real and simulated events, there on four-dimensional points that also include polarity~\cite{han2024pecs}. Like SWD, its value is a distance in the scaled space, measured in pixels. As discussed in Section~\ref{sec:background}, its value also changes with the number of events, so we use it as an independent verification rather than as one of the main metrics.
 
 \subsection{Choice of Parameters}
 \label{sec:parameters}

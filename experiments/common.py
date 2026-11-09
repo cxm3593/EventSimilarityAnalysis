@@ -261,25 +261,31 @@ def distance(metric, settings, points_a: np.ndarray, points_b: np.ndarray) -> fl
 # Output
 # ---------------------------------------------------------------------------
 
+# Simulator comparison runs (Test 4) are kept apart from the other tests' outputs.
+SIMULATOR_COMPARISON_ROOT = PROJECT_ROOT / "output" / "simulator" / "comparison"
+
+
 class RunOutput:
     """One run's folder, with its configuration written before any result."""
 
     def __init__(self, test_name: str, trial: Trial, tag: str = "",
-                 existing: str = None):
+                 existing: str = None, root: Path = None):
+        # Default is output/tests/<trial>/<test>/<run_id>/. A test that passes `root`
+        # writes to <root>/<trial>/<run_id>/ instead.
+        base = (Path(root) / trial.name if root is not None
+                else PROJECT_ROOT / "output" / "tests" / trial.name / test_name)
         if existing:
             # Resuming: reuse the interrupted run's folder rather than opening a new
             # one, so its partial results.csv is the file that gets continued.
             self.directory = Path(existing)
             if not self.directory.is_absolute():
-                self.directory = (PROJECT_ROOT / "output" / "tests" / trial.name
-                                  / test_name / existing)
+                self.directory = base / existing
             if not self.directory.exists():
                 raise SystemExit(f"cannot resume: {self.directory} does not exist")
         else:
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             run_id = f"{stamp}_{tag}" if tag else stamp
-            self.directory = (PROJECT_ROOT / "output" / "tests" / trial.name
-                              / test_name / run_id)
+            self.directory = base / run_id
         self.figures = self.directory / "figures"
         self.figures.mkdir(parents=True, exist_ok=True)
         self.test_name = test_name

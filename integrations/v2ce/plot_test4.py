@@ -30,12 +30,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--summary",
         type=Path,
-        default=project_root / "output" / "v2ce" / "test4_comparison_summary.csv",
+        default=project_root / "output" / "simulator" / "test4_comparison_summary.csv",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=project_root / "output" / "v2ce" / "test4_real_v2e_v2ce.html",
+        default=project_root / "output" / "simulator" / "test4_real_v2e_v2ce.html",
     )
     return parser.parse_args()
 
@@ -46,6 +46,10 @@ def format_value(metric: str, value: float) -> str:
 
 def main() -> None:
     args = parse_args()
+    # KNOWN PROBLEM (noted 2026-10-02, not fixed): the summary written by summarize.py
+    # counts the baseline rotation compared with itself in its real-vs-real values, so
+    # the "real-real" bars here are too low. This figure also plots means. Prefer
+    # notebook/simulator_comparison.ipynb, which excludes the self-comparisons.
     data = pd.read_csv(args.summary)
     data["frequency"] = data["frequency"].str.upper()
 

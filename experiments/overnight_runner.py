@@ -27,13 +27,17 @@ def save_manifest(directory: Path, record: dict):
     temporary.replace(directory / "manifest.json")
 
 
-def capture_sources(directory: Path) -> dict:
+def capture_sources(directory: Path, cla: Path) -> dict:
     """Keep the launched code/settings snapshot and hashes beside its logs."""
     source_dir = directory / "source"
     source_dir.mkdir()
     paths = ["experiments/perturbation.py", "experiments/perturbation_shared.py",
              "experiments/perturbation_methods.py", "experiments/common.py",
-             "experiments/perturbation_cla.yaml", "experiments/overnight_runner.py", "config.yaml"]
+             "experiments/perturbation_cla.yaml", "experiments/overnight_runner.py",
+             "experiments/temporal_reuse.py", "analysis/consolidate_perturbation.py", "config.yaml"]
+    paths.append(cla.resolve().relative_to(PROJECT_ROOT).as_posix())
+    paths.extend(path.relative_to(PROJECT_ROOT).as_posix()
+                 for path in (PROJECT_ROOT / "src/event_analysis_toolbox").rglob("*.py"))
     hashes = {}
     for relative in paths:
         path = PROJECT_ROOT / relative
@@ -48,17 +52,18 @@ def main():
     """Start one suite, record child/supervisor PIDs, and preserve both log streams."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--launch-dir", type=Path, required=True)
+    parser.add_argument("--cla", type=Path, default=Path("experiments/perturbation_cla.yaml"))
     parser.add_argument("--evaluations", nargs="+", default=UPDATED_EVALUATIONS,
                         choices=[*UPDATED_EVALUATIONS, "subsampling", "uniform_noise"])
     args = parser.parse_args()
     directory = args.launch_dir.resolve()
     directory.mkdir(parents=True, exist_ok=False)
     command = [sys.executable, "-u", "experiments/perturbation.py", "--cla",
-               "experiments/perturbation_cla.yaml", "--evaluations", *args.evaluations]
+               str(args.cla.resolve()), "--evaluations", *args.evaluations]
     record = {"status": "starting", "started_at": datetime.now().isoformat(),
               "supervisor_pid": os.getpid(), "command": command, "cwd": str(PROJECT_ROOT),
               "stdout": str(directory / "stdout.log"), "stderr": str(directory / "stderr.log"),
-              "source_sha256": capture_sources(directory)}
+              "source_sha256": capture_sources(directory, args.cla)}
     save_manifest(directory, record)
     try:
         with (directory / "stdout.log").open("w", encoding="utf-8") as stdout, \

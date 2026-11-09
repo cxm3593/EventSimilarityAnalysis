@@ -1,0 +1,13 @@
+# Approved 23 September: 25 uneven degree offsets; temporal only.
+# Recompute every comparison from the recorded events; no reuse of saved distances.
+# All original runs remain untouched.
+trials_dir: C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials
+trials: [optical_chopper_data_f1, optical_chopper_data_f2, optical_chopper_data_f3, optical_chopper_data_f4, optical_chopper_data_f5]
+output_dir: output/perturbation
+evaluations: [temporal_offset]
+temporal_window: 5000
+first_period: 0
+periods: 1
+seed: 0
+temporal_offset_grid: degrees
+temporal_offset_sweep: [0, 0.25, 0.5, 1, 2, 5, 10, 30, 45, 60, 90, 120, 135, 150, 175, 180, 185, 210, 225, 240, 270, 300, 315, 330, 360]

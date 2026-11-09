@@ -11,15 +11,15 @@ import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TEST_ROOT = PROJECT_ROOT / "output/tests"
-V2CE_ROOT = PROJECT_ROOT / "output/v2ce"
+SIMULATOR_ROOT = PROJECT_ROOT / "output/simulator"
+COMPARISON_ROOT = SIMULATOR_ROOT / "comparison"
 TRIALS_ROOT = PROJECT_ROOT.parent / "EventCamCalib/output/trials"
 TRIAL_NAMES = tuple(f"optical_chopper_data_f{i}" for i in range(1, 6))
 
 
 def find_combined_run(trial: str) -> Path:
     candidates = []
-    root = TEST_ROOT / trial / "test4_synthetic"
+    root = COMPARISON_ROOT / trial
     for config_path in root.glob("*/run_config.yaml"):
         with config_path.open("r", encoding="utf-8") as handle:
             config = yaml.safe_load(handle)
@@ -71,6 +71,13 @@ def main() -> None:
         frames.append(frame)
 
     results = pd.concat(frames, ignore_index=True)
+    # KNOWN PROBLEM (noted 2026-10-02, not fixed): the "real" source includes period 0,
+    # which is the baseline rotation compared with itself and is always exactly zero.
+    # One third of the real-vs-real comparisons are therefore zeros, so the real-vs-real
+    # mean and median written below are too low and the *_over_real ratios too high.
+    # v2e and V2CE are not affected. notebook/simulator_comparison.ipynb already excludes
+    # period 0 for "real". To fix here: drop source == "real" & period_index == 0 first.
+    # Also note that means are not meaningful on clamped MMD values (see CLAUDE.md).
     summary = (results.groupby(["frequency", "source", "metric"])
                .agg(mean_distance=("distance", "mean"),
                     sd_distance=("distance", "std"),
@@ -92,7 +99,7 @@ def main() -> None:
         paths = {
             "real": TRIALS_ROOT / trial / "final_masked_real.h5",
             "v2e": TRIALS_ROOT / trial / "final_masked_v2e.h5",
-            "v2ce": V2CE_ROOT / trial / "final_masked_v2ce.h5",
+            "v2ce": TRIALS_ROOT / trial / "final_masked_v2ce.h5",
         }
         for source, path in paths.items():
             native_pixels = 462 * 260 if source == "v2ce" else 1280 * 720
@@ -110,11 +117,11 @@ def main() -> None:
         lambda row: row.events_per_pixel_second
         / real_rates.loc[row.frequency, "events_per_pixel_second"], axis=1)
 
-    output = V2CE_ROOT
+    output = SIMULATOR_ROOT
     summary.to_csv(output / "test4_comparison_summary.csv", index=False)
     wide.to_csv(output / "test4_comparison_wide.csv", index=False)
     rate_summary.to_csv(output / "event_rate_summary.csv", index=False)
-    with (output / "test4_run_index.yaml").open("w", encoding="utf-8") as handle:
+    with (output / "run_index.yaml").open("w", encoding="utf-8") as handle:
         yaml.safe_dump(run_index, handle, sort_keys=False)
 
     invalid = int(results["distance"].isna().sum())
@@ -124,7 +131,7 @@ def main() -> None:
                      values="v2ce_over_v2e").round(3).to_string())
     print("\nWrote:")
     for name in ("test4_comparison_summary.csv", "test4_comparison_wide.csv",
-                 "event_rate_summary.csv", "test4_run_index.yaml"):
+                 "event_rate_summary.csv", "run_index.yaml"):
         print(output / name)
 
 

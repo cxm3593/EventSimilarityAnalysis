@@ -29,12 +29,15 @@ Generate complete F1--F5 recordings:
 uv run --project integrations/v2ce python integrations/v2ce/generate.py --all
 ```
 
-Outputs are written under `output/v2ce/<trial>/`. The Test 4 input is
-`final_masked_v2ce.h5`; the upstream NPZ and generation log are kept beside it for
-traceability.
+Outputs are written beside v2e's in the calibrated trial folder,
+`../EventCamCalib/output/trials/<trial>/`. The Test 4 input is
+`final_masked_v2ce.h5`; the upstream NPZ, generation log, run configuration and
+alignment diagnostic are kept in the `v2ce/` subfolder for traceability. Pass
+`--output-root` to write somewhere else, for example for a smoke test.
 
-Extend the existing compatible F1--F5 Test 4 runs with V2CE, without recomputing
-their real and v2e rows or running all-to-all:
+Comparison runs live in `output/simulator/comparison/<trial>/`. Extend the existing
+compatible F1--F5 runs with V2CE, without recomputing their real and v2e rows or
+running all-to-all:
 
 ```powershell
 .venv/Scripts/python.exe integrations/v2ce/run_test4.py --all
@@ -52,4 +55,5 @@ Generate the three-source comparison figure:
 .venv/Scripts/python.exe integrations/v2ce/plot_test4.py
 ```
 
-The figure is written to `output/v2ce/test4_real_v2e_v2ce.html`.
+The summaries, the run index (`run_index.yaml`) and the figure are written to
+`output/simulator/`.

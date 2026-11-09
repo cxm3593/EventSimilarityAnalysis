@@ -27,7 +27,6 @@ WORKSPACE = Path(r"C:/Users/cxm3593/Academic/Workspace")
 PROJECT_ROOT = WORKSPACE / "EventSimilarityAnalysis"
 DEFAULT_V2CE_ROOT = WORKSPACE / "V2CE-Toolbox"
 DEFAULT_TRIALS_ROOT = WORKSPACE / "EventCamCalib/output/trials"
-DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "output/v2ce"
 TRIAL_NAMES = tuple(f"optical_chopper_data_f{i}" for i in range(1, 6))
 
 EVENT_DTYPE = np.dtype([
@@ -45,7 +44,8 @@ def parse_args() -> argparse.Namespace:
     selected.add_argument("--all", action="store_true", help="generate F1 through F5")
     parser.add_argument("--v2ce-root", type=Path, default=DEFAULT_V2CE_ROOT)
     parser.add_argument("--trials-root", type=Path, default=DEFAULT_TRIALS_ROOT)
-    parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument("--output-root", type=Path, default=None,
+                        help="write to <output-root>/<trial>/ instead of the trial folder")
     parser.add_argument("--model", type=Path, default=None)
     parser.add_argument("--max-frames", type=int, default=None,
                         help="limit frames for a smoke test; default uses the whole video")
@@ -275,7 +275,13 @@ def generate_trial(args: argparse.Namespace, trial: str) -> None:
         raise FileNotFoundError(model_path)
 
     metadata = video_metadata(video_path)
-    output_dir = args.output_root / trial
+    if args.output_root is None:
+        # Default: beside v2e in the calibrated trial folder, mirroring its v2e/ layout.
+        output_dir = trial_dir / "v2ce"
+        final_path = trial_dir / "final_masked_v2ce.h5"
+    else:
+        output_dir = args.output_root / trial
+        final_path = output_dir / "final_masked_v2ce.h5"
     raw_dir = output_dir / "raw"
     ellipse, margin = ellipse_record(trial_dir)
     fps = int(round(metadata["fps"]))
@@ -289,7 +295,6 @@ def generate_trial(args: argparse.Namespace, trial: str) -> None:
     if not npz_path.exists():
         raise FileNotFoundError(npz_path)
 
-    final_path = output_dir / "final_masked_v2ce.h5"
     if final_path.exists() and not args.overwrite:
         print(f"using existing converted output: {final_path}")
         conversion = {"status": "existing"}

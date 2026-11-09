@@ -311,3 +311,55 @@ def test_time_grid_saved_provenance(trial, args, config, tmp_path):
 def test_invalid_time_grid(arguments):
     with pytest.raises(SystemExit):
         runner.parse_args(arguments)
+
+
+def test_temporal_reuse_exact_keys_and_only_missing_metrics(trial, args, config, tmp_path, monkeypatch):
+    from experiments.temporal_reuse import TemporalReuse
+    metrics = build_metrics(METRIC_KEYS, config)
+    source = tmp_path / "source"
+    source_dir = source / trial.name / "temporal_offset"
+    args.temporal_offset_sweep = [0, 90, 360]
+    real = MemoryStream(np.arange(1001))
+    methods.TemporalOffset.evaluate(trial, real, args, config, metrics, source_dir)
+    original = (source_dir / "results.csv").read_bytes()
+    args.temporal_reuse_run = str(source)
+    # A different angle label with the exact same rounded microsecond shift.
+    args.temporal_offset_sweep = [0, 89.28, 180, 360]
+    calls = []
+    original_measure = shared.measure
+    def counted(*values):
+        calls.append(1)
+        return original_measure(*values)
+    monkeypatch.setattr(shared, "measure", counted)
+    target = tmp_path / "target"
+    methods.TemporalOffset.evaluate(trial, real, args, config, metrics, target)
+    result = pd.read_csv(target / "results.csv")
+    assert len(result) == 80
+    assert len(calls) == 20
+    assert result.reused_from.notna().sum() == 60
+    assert set(result.magnitude) == {0, 89.28, 180, 360}
+    assert not result.duplicated(["period_index", "window_index", "temporal_offset_us", "metric"]).any()
+    assert (source_dir / "results.csv").read_bytes() == original
+    provenance = yaml.safe_load((target / "reuse_provenance.yaml").read_text())
+    assert provenance["reused_rows"] == 60 and provenance["new_rows"] == 20
+    source_results = pd.read_csv(source_dir / "results.csv")
+    cache = TemporalReuse(source_results, source_dir / "results.csv")
+    row = source_results.iloc[0].to_dict()
+    with pytest.raises(ValueError, match="live event counts"):
+        cache.lookup(row, row["metric"], 999, 100)
+    with pytest.raises(ValueError, match="window_start_us"):
+        cache.lookup({**row, "window_start_us": 99}, row["metric"], 100, 100)
+    with pytest.raises(ValueError, match="Duplicate physical"):
+        TemporalReuse(pd.concat([source_results, source_results.iloc[[0]]]), "unused")
+    args.seed = 17
+    with pytest.raises(ValueError, match="Incompatible measurement"):
+        methods.TemporalOffset.evaluate(trial, real, args, config, metrics, tmp_path / "invalid")
+
+
+def test_approved_temporal_degree_grid():
+    args = runner.parse_args(["--cla", "experiments/temporal_degrees_cla.yaml"])
+    expected = sorted(set(range(0, 361, 30)) | {45, 135, 225, 315, .25, .5, 1, 2, 5, 10, 175, 185})
+    assert args.temporal_offset_sweep == expected and len(expected) == 25
+    assert args.evaluations == ["temporal_offset"]
+    assert args.temporal_window == 5000 and args.periods == 1 and args.seed == 0
+    assert args.temporal_reuse_run is None

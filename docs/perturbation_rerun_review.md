@@ -1,6 +1,72 @@
-# Expanded perturbation sweeps — 22 September 2026
+# Perturbation rerun review — 22–24 September 2026
 
-## Status
+## Fresh temporal degree sweep — completed 24 September
+
+The user-approved **fresh temporal-only run** started on 23 September at 17:51:24
+and finished on 24 September at **00:27:46 America/New_York** (6 h 36 min 21 s).
+The supervisor exited with code 0; the worker also recorded completion. The four
+recorded process IDs were absent at the completion check. This run supersedes the
+stopped expanded temporal sweep below; it does not complete that older suite.
+
+- [Fresh results and saved configurations](../output/perturbation/20260923_175125_279651/).
+- [Five-metric temporal degree figure](../output/perturbation/20260923_175125_279651/temporal_offset.html).
+- [Combined temporal summary](../output/perturbation/20260923_175125_279651/summary.csv).
+- [Supervisor manifest, logs and immutable source/settings snapshot](../output/perturbation/overnight_degrees_fresh_20260923_1752/).
+
+All five recordings used the 25 requested angles:
+`[0,0.25,0.5,1,2,5,10,30,45,60,90,120,135,150,175,180,185,210,225,240,270,300,315,330,360]`.
+Every comparison was computed in this run: `temporal_reuse_run` is null in the root
+and all five trial configurations, with no reuse provenance or reused-row columns.
+No previous temporal distances were copied or interpolated. All events in every
+complete 5 ms reference window of one rotation were retained, with seed 0 and the
+unchanged five metrics, scales and backends. Comparison windows are actual later
+recorded windows, independently re-zeroed, without wrapping or sample caps.
+
+### Completion validation
+
+The read-only audit
+[analysis/validate_fresh_temporal_completion.py](../analysis/validate_fresh_temporal_completion.py)
+passed on 24 September. It did not evaluate metrics or rewrite original outputs.
+
+- **112,875 metric rows**: F1 49,000; F2 25,000; F3 16,500; F4 12,375; F5 10,000.
+  These cover 392, 200, 132, 99 and 80 reference windows, respectively.
+- **625 summary rows**, 125 per recording; all comparisons have status `ok`, with
+  **zero exclusions** and finite valid distances.
+- Full angle/metric/window coverage; unique logical and physical comparison keys;
+  reference and comparison endpoints; rounded degree-to-time and realized-angle
+  conversions; measured rotation periods; and settings agreement all passed.
+- Both event-count columns were independently checked against the source recordings
+  using the saved half-open window endpoints. The saved reference windows match
+  every complete first-rotation 5 ms window, without capping or omitted windows.
+- Zero-offset distances are exactly zero for all five metrics. All signed MMD
+  estimates are finite; **4,752 are negative**, consistent with the unbiased
+  estimator. Their reported distances obey `sqrt(max(distance_squared, 0))`.
+  Negative estimates are retained, not treated as failures or evidence of equality.
+- All per-trial summaries were recomputed from their metric rows and matched;
+  both root summaries match the concatenated trial summaries.
+- All **22 source/settings SHA-256 hashes** match the immutable launch snapshot
+  and the corresponding workspace files at validation time.
+- Saved HTML curve data match the summaries, with five metric rows and all 25
+  recording/metric curves in the overview. All five point-cloud examples have
+  finite coordinates and at most 2,000 display points per cloud. Plot checks are
+  structural/data checks; browser-rendered visual inspection was not performed.
+- No traceback, error, exception or warning was found in the evaluation stderr log.
+  The 52 pre-launch regression tests passed before this fresh run started.
+
+No evaluation failures were found. Window summaries are descriptive, not confidence
+intervals or significance tests. These checks do not establish density independence.
+At 360 degrees, comparison is with the next recorded rotation, not an identity copy.
+
+The monitoring heartbeat is paused after completion validation. The notebook and
+original result folders remain unchanged by this completion audit; the notebook
+still shows the explicitly labelled previous temporal sweep described below.
+`output/perturbation/current/` was not published. Any later consolidation must use
+this fresh temporal run, the completed three spatial methods from the stopped
+22 September suite, and subsampling/noise from the completed 21 September suite,
+with exact per-method provenance. The existing two-source consolidation command
+must not be used as-is for this three-source selection.
+
+## Expanded 22 September suite — historical status
 
 Launched **22 September, 18:10:15 America/New_York**. **Stopped at the user's request
 on 23 September, 10:26:39 America/New_York**, because the temporal sweep was taking
@@ -15,7 +81,8 @@ saved rows out of 62,000; F3–F5 were not started. The new suite is **incomplet
 - Supervisor, stdout/stderr and source/settings snapshot: [overnight_20260922_181015](../output/perturbation/overnight_20260922_181015/).
 - Startup launcher PID 72624; supervisor PID 59012; evaluation launcher PID 69104;
   actual evaluation worker PID 74316. Verify creation time and command, not PID alone.
-- The task heartbeat is **paused** following the stop request.
+- The task heartbeat was paused following the stop request, then reconfigured for
+  the fresh run documented above.
 - `output/perturbation/current/` was **not published**; full-suite consolidation is deferred.
 
 ## Notebook refresh after stopping
@@ -39,8 +106,8 @@ checked for all 25 recording/metric curves, colours and 1450 × 420 dimensions.
 New HTML figures are separate from original runs:
 [notebook_20260923_spatial_refresh](../output/perturbation/notebook_20260923_spatial_refresh/).
 The combined overview and six separate figures were regenerated. Browser-rendered
-visual inspection was not performed. Temporal strategy and any new temporal plots
-remain deferred for discussion with the user.
+visual inspection was not performed. This refresh preceded the fresh temporal run
+documented above; its new results have not yet been incorporated into the notebook.
 
 ## What changed
 

@@ -20,8 +20,8 @@ import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TEST_ROOT = PROJECT_ROOT / "output/tests"
-V2CE_ROOT = PROJECT_ROOT / "output/v2ce"
+COMPARISON_ROOT = PROJECT_ROOT / "output/simulator/comparison"
+TRIALS_ROOT = PROJECT_ROOT.parent / "EventCamCalib/output/trials"
 TRIAL_NAMES = tuple(f"optical_chopper_data_f{i}" for i in range(1, 6))
 METRICS = ("mmd_rbf03", "mmd_rbf15", "mmd_rbf75", "swd", "chamfer")
 
@@ -50,7 +50,7 @@ def compatible(config: dict, args: argparse.Namespace) -> bool:
 
 
 def find_base_run(trial: str, args: argparse.Namespace) -> Path:
-    root = TEST_ROOT / trial / "test4_synthetic"
+    root = COMPARISON_ROOT / trial
     candidates = []
     for config_path in root.glob("*/run_config.yaml"):
         try:
@@ -85,7 +85,7 @@ def seed_run(trial: str, base: Path, args: argparse.Namespace) -> Path:
 
 
 def run_trial(trial: str, args: argparse.Namespace) -> Path:
-    v2ce_path = V2CE_ROOT / trial / "final_masked_v2ce.h5"
+    v2ce_path = TRIALS_ROOT / trial / "final_masked_v2ce.h5"
     if not v2ce_path.exists():
         raise FileNotFoundError(v2ce_path)
     base = find_base_run(trial, args)

@@ -25,9 +25,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.spatial import cKDTree
 
-from common import (METRIC_KEYS, ResultWriter, RunOutput, Stream, Trial, build_metrics,
-                    events_per_comparison, load_config, load_streams, measure,
-                    select_indices, subsample, to_points)
+from common import (METRIC_KEYS, SIMULATOR_COMPARISON_ROOT, ResultWriter, RunOutput, Stream,
+                    Trial, build_metrics, events_per_comparison, load_config, load_streams,
+                    measure, select_indices, subsample, to_points)
 from test3_modifier import apply_generic, stable_seed
 
 TRIALS_DIR = r"C:/Users/cxm3593/Academic/Workspace/EventCamCalib/output/trials"
@@ -132,6 +132,11 @@ def run_4a(args, trial, real, simulator_streams, metrics, ctx, count, n_periods,
     sources = ["real"] + list(simulator_streams)
     if args.modified:
         sources += list(MODIFIED_SOURCES)
+    # NOTE (2026-10-02): for source "real", the loop below also runs the baseline period
+    # itself, i.e. each baseline window compared with the same window. Those distances are
+    # exactly zero by construction and are written to results.csv like any other. They are
+    # not a measurement of real-vs-real variation: any analysis using "real" as the noise
+    # floor must exclude period_index == baseline_period.
     for source in sources:
         for period in range(n_periods):
             begin, _ = trial.period_bounds(period, real.t_start)
@@ -527,7 +532,7 @@ def main():
                        tag=(("smoke" if args.smoke else f"w{args.window_us}us")
                             + ("_v2ce" if "v2ce" in simulator_streams else "")
                             + ("_polsplit" if args.polarity == "split" else "")),
-                       existing=args.resume)
+                       existing=args.resume, root=SIMULATOR_COMPARISON_ROOT)
     parameters = dict(vars(args))
     parameters.update(events_per_comparison=count, n_periods_used=n_periods,
                       rotation_period_us=trial.rotation_period_us,

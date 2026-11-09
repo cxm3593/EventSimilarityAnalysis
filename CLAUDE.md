@@ -16,6 +16,7 @@ Data lives in a sibling repo:
 ../EventCamCalib/output/trials/optical_chopper_data_f1/
     final_masked_real.h5     real events, (x, y, p, t) structured, time-sorted
     final_masked_v2e.h5      v2e events, same layout
+    final_masked_v2ce.h5     V2CE events, same layout (integrations/v2ce/generate.py)
     result.yaml              calibration output
     rotation_period.yaml     written by tools/measure_rotation_period.py - preferred
 ```
@@ -79,8 +80,16 @@ main.py                     the original baseline-comparison pipeline
 src/event_analysis_toolbox/ metrics, mmd, sliced_wasserstein, chamfer, preprocessing
 experiments/                the four evaluation tests - common.py plus test1..test4
 notebook/periodic_analysis.ipynb   exploratory work on segmentation
+notebook/perturbation.ipynb        figures for the perturbation study
+notebook/simulator_comparison.ipynb  figures for real vs v2e vs V2CE
+analysis/simulator_checks/  read-only checks on the simulator comparison
 docs/                       the plan and specification these tests implement
-output/tests/<trial>/<test>/<run_id>/   results, one folder per run
+output/perturbation/        the perturbation study: three source runs, figures, provenance
+output/simulator/           real vs v2e vs V2CE: comparison/<trial>/<run_id>/, analysis/
+output/noise_floor/         every turn against the next one (experiments/noise_floor.py)
+output/README.md            which results the paper uses and where each came from
+output/tests/<trial>/<test>/<run_id>/   where tests 1-3 write if rerun; absent otherwise
+../EventSimilarityAnalysis_archive/     everything older, moved out on 2026-10-02
 ```
 
 ## Conventions

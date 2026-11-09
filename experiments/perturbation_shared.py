@@ -117,7 +117,7 @@ def measure_pair(reference: np.ndarray, modified: np.ndarray, metrics: dict, inf
 
 
 def evaluate_window(method, window: ReferenceWindow, sweep: list[float], seed: int,
-                    metrics: dict, writer: ResultWriter, progress):
+                    metrics: dict, writer: ResultWriter, progress, reuse=None):
     """Apply the sweep to one reference window and flush its results incrementally."""
     base = {"trial": window.trial.name, "perturbation": method.name, "seed": seed,
             "period_index": window.period_index, "window_index": window.window_index,
@@ -126,7 +126,11 @@ def evaluate_window(method, window: ReferenceWindow, sweep: list[float], seed: i
         modified = method.apply(window, magnitude, window_rng(seed, method.name, window))
         info = {**base, "magnitude": magnitude, method.parameter: magnitude,
                 **method.details(window, magnitude, modified)}
-        writer.extend(measure_pair(window.points, modified, metrics, info))
+        if reuse is None:
+            rows = measure_pair(window.points, modified, metrics, info)
+        else:
+            rows = reuse.measure(window.points, modified, metrics, info)
+        writer.extend(rows)
         writer.flush()
         progress.update(len(metrics))
 
@@ -161,6 +165,13 @@ def evaluate_perturbation(method, trial: Trial, real: Stream, args, config: dict
     output_dir.mkdir(parents=True, exist_ok=False)
     write_run_config(output_dir, args, config, metrics, method, trial, windows)
     windows.to_csv(output_dir / "windows.csv", index=False)
+    reuse = None
+    if method.name == "temporal_offset" and getattr(args, "temporal_reuse_run", None):
+        if __package__:
+            from .temporal_reuse import TemporalReuse
+        else:
+            from temporal_reuse import TemporalReuse
+        reuse = TemporalReuse.load(Path(args.temporal_reuse_run), output_dir, windows, sweep)
     eligible = windows[windows.eligible]
     example_index = eligible.n_events.idxmax() if not eligible.empty else None
     total = len(windows) * len(sweep) * len(metrics)
@@ -168,7 +179,7 @@ def evaluate_perturbation(method, trial: Trial, real: Stream, args, config: dict
             total=total, desc=f"{trial.name} / {method.name}", unit="metric", mininterval=10) as progress:
         for row in windows.itertuples():
             window = prepare_window(row, trial, real, config)
-            evaluate_window(method, window, sweep, args.seed, metrics, writer, progress)
+            evaluate_window(method, window, sweep, args.seed, metrics, writer, progress, reuse)
             if row.Index == example_index:
                 magnitude = method.example_magnitude(sweep)
                 modified = method.apply(window, magnitude, window_rng(args.seed, method.name, window))

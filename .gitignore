@@ -12,3 +12,6 @@ wheels/
 
 # Output directory
 output/
+
+# Code export
+code_export/

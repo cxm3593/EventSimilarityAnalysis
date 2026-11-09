@@ -102,6 +102,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="phase offsets in full-rotation degrees, converted to microseconds per trial")
     parser.add_argument("--temporal-offset-grid", choices=["degrees", "time"], default="degrees",
                         help="time builds a microsecond sweep through one measured rotation per trial")
+    parser.add_argument("--temporal-reuse-run", default=None,
+                        help="explicit completed temporal source; validate before reusing exact window/shift keys")
     parser.add_argument("--temporal-near-us", type=int, nargs="+",
                         default=[0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000])
     parser.add_argument("--temporal-far-step-us", type=int, default=20000,

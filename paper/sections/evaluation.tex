@@ -7,6 +7,26 @@
 \subsection{Perturbation Study}
 \label{sec:perturbation}
 
+We first report how the metrics respond to the six perturbations described in Section~\ref{sec:procedure}, applied to the real events of all five recordings. These perturbations cannot cover every difference that may occur between real and simulated events, but they show how each metric responds to known changes over a range of magnitudes. We expect the metrics to respond consistently to changes in the spatial and temporal structure of the events. The metrics are also expected to respond to added uniform noise but to be insensitive to subsampling, because the latter does not change the underlying distribution of the event data. Table~\ref{tab:perturbation-sweeps} lists the magnitudes tested for each perturbation. The first rotation of F1 to F5 contains 392, 200, 132, 99 and 80 complete windows, respectively.
+
+\begin{table}[t]
+  \centering
+  \caption{Magnitudes of the perturbations.}
+  \label{tab:perturbation-sweeps}
+  \begin{tabular}{llcc}
+    \hline
+    Perturbation & Parameter & Range & Steps \\
+    \hline
+    Spatial translation & Offset along each axis (px) & 0 to 25 & 14 \\
+    Spatial scaling & Scale factor & 0.90 to 1.20 & 18 \\
+    Spatial jitter & Maximum displacement along each axis (px) & 0 to 16 & 12 \\
+    Temporal offset & Rotation angle (degrees) & 0 to 360 & 25 \\
+    Subsampling & Retained events (\%) & 100 to 25 & 5 \\
+    Uniform noise & Added events (\% of original) & 0 to 50 & 6 \\
+    \hline
+  \end{tabular}
+\end{table}
+
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{paper/Images/Perturbation_figure_all.png}

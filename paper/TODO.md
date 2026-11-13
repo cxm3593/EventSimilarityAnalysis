@@ -1,32 +1,29 @@
 # Paper to-do list
 
-Target: first full draft by Sunday 25 October 2026, then send to Gabe.
+Target: first full draft, then send to Gabe. The 25 October 2026 target has passed; new date not set.
 Tick an item by changing `[ ]` to `[x]`.
 
 ## Writing the draft
 
-- [ ] Methodology prose, from the outline
-- [ ] Evaluation prose: perturbation study
+- [ ] Evaluation prose: perturbation study. Opening paragraph, sweep table, and Spatial Translation and Spatial Scaling are done; jitter, subsampling, uniform noise, temporal offset and the summary remain.
 - [ ] Evaluation prose: simulator study
-- [ ] Discussion (no outline yet)
+- [ ] Discussion (no outline yet). Includes the Example Study, moved here from the Evaluation as a recommendation or ablation study.
 - [ ] Conclusion
 - [ ] Abstract (150 to 250 words)
 - [ ] Introduction prose: update to the new outline structure, and write the road map paragraph
-- [ ] Caption for the combined perturbation figure
+- [ ] Perturbation figures: one per subsection with its own caption. Translation and scaling are done; jitter, subsampling, uniform noise and temporal offset remain.
 
 ## Content still open
 
 | Item | Section | Notes |
 |---|---|---|
 | [ ] Radiometric calibration of the scene | Methodology, Framework Overview | Done. Need to review and report only, so the scene can be reproduced. It does not change the v2e or V2CE data. Data: `Data/Radiometric_Camera_Calib_08062026` |
-| [ ] Kernel bandwidths and how they were chosen | Methodology, MMD | 3, 15 and 75 px. The outline still says "remain to be determined" |
-| [ ] Choice of parameters | Methodology, Choice of Parameters | Space-time scale, window length, kernel bandwidth: what they are, how they affect results, SWD-guided choice of MMD kernels |
 | [ ] Uncertainty of the perturbation responses | Evaluation, Perturbation Study | The whole-recording noise floor run can serve as the basis |
-| [ ] Which noise floor to use | Evaluation, Comparison Setup | Now the 360-degree point of the temporal offset test; the whole-recording run is the alternative. F2 is unstable |
-| [ ] Parameter tuning example | Evaluation, Example Study | Promised in the introduction |
+| [ ] Parameter tuning example | Discussion | Promised in the introduction. Moved from the Evaluation's Example Study to the Discussion, as a recommendation or ablation study |
 
 ## Fixes in the outline
 
+- [ ] Subsampling bullet: still describes the mean ("The plotted mean MMD distances...", "The largest kernel shows a small increase at the strongest subsampling level"). The figures now use the median, under which that increase is zero. Recheck the bullet against the median figure.
 - [ ] Subsampling and Uniform noise bullets: `%` is not escaped (write `\%`). LaTeX reads `%` as the start of a comment, so the rest of those lines is missing from the PDF.
 - [ ] Chamfer is still called a "baseline" (background bullet, methodology overview, the "Chamfer baseline" subsection). It is now an independent verification.
 - [ ] Framework bullet: "support both types of comparison" comes before either type is named.
@@ -43,9 +40,23 @@ Tick an item by changing `[ ]` to `[x]`.
 
 ## Fixes in the prose
 
+- [ ] `sections/methodology.tex` loose ends: the window-length reference to Section~ef{sec:parameters} in Event Representation is circular with Choice of Parameters; "A finite set of directions only approximates SWD..." in the SWD subsection repeats the Monte Carlo error text; the radiometric placeholder (`% Leave a space for`) in the Framework Overview.
+- [ ] `sections/evaluation.tex`, Spatial Translation and Spatial Scaling: rework the MMD and Chamfer paragraphs so each states its point first and the numbers follow as evidence for it, rather than listing values.
 - [ ] `sections/background.tex`: Chamfer is called a "baseline"; the sentence "This motivates the sampling and real--real references used in the evaluation" refers to a test that no longer exists; no closing paragraph.
+
+## Fixes in the figures
+
+- [ ] Perturbation PNGs (`Images/perturbation_*.png`): the text inside the images does not match the paper. Re-export from `notebook/perturbation.ipynb` once fixed, for all six figures.
+  - The subtitle says "whiskers: window 5–95%". The paper avoids "whiskers"; the captions describe the vertical lines instead.
+  - Each image has an in-figure title (e.g. "Spatial offset x+y: responses across F1–F5"). IEEE figures carry no title inside the image, and "Spatial offset x+y" does not match "spatial translation" in the text. Remove the title and subtitle.
+  - Panel names read "MMD RBF-3", "MMD RBF-15", "MMD RBF-75", while the text says "the 3-pixel kernel". Rename to match, e.g. "MMD, $d$ = 3 px".
 
 ## Done
 
+- [x] Methodology prose, from the outline (pushed 6 Nov 2026).
+- [x] Kernel bandwidths and how they were chosen: 3, 15 and 75 px, in Choice of Parameters.
+- [x] Choice of parameters: space-time scale, window length and SWD-guided kernel choice.
+- [x] Which noise floor to use: the neighbouring-turns run, `output/noise_floor/neighbouring_turns_20261002_175852` (every turn against the next, same phase).
+- [x] Perturbation curves use the median over windows, not the mean (decided 9 Nov 2026); the mean is kept in `notebook/perturbation.ipynb` for comparison.
 - [x] v2e timing check: v2e matches real best when shifted by 3 to 7 ms. Not significant, no text needed.
 - [x] Manuscript skeleton: section files for Methodology, Evaluation, Discussion and Conclusion.

@@ -27,15 +27,39 @@ We first report how the metrics respond to the six perturbations described in Se
   \end{tabular}
 \end{table}
 
+% --- Figure: replaced by one figure per subsection (old version kept below) ---
+% \begin{figure*}[t]
+%   \centering
+%   \includegraphics[width=\textwidth]{paper/Images/Perturbation_figure_all.png}
+%   \caption{All perturbation figures combined.}
+%   \label{fig:perturbation-responses}
+% \end{figure*}
+
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=\textwidth]{paper/Images/Perturbation_figure_all.png}
-  \caption{All perturbation figures combined.}
-  \label{fig:perturbation-responses}
+  \includegraphics[width=\textwidth]{paper/Images/perturbation_spatial.png}
+  \caption{Response of the five metrics to spatial translation in F1 to F5. The same offset, from 0 to 25~pixels, is added to the x and y coordinates of every event. Each panel shows one metric, and each curve one recording. Each point is the median distance over the 5~ms windows of the first rotation, and vertical lines span the 5th to 95th percentiles of the per-window distances.}
+  \label{fig:perturbation-translation}
 \end{figure*}
 
-\subsubsection{Spatial Translation and Spatial Scaling}
-\label{sec:translation-scaling}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{paper/Images/perturbation_scaling.png}
+  \caption{Response of the five metrics to spatial scaling in F1 to F5. The events are contracted or expanded about the center of the chopper disk by factors from 0.90 to 1.20, and a factor of 1 leaves them unchanged. Each panel shows one metric, and each curve one recording. Each point is the median distance over the 5~ms windows of the first rotation, and vertical lines span the 5th to 95th percentiles of the per-window distances.}
+  \label{fig:perturbation-scaling}
+\end{figure*}
+% --- End of figure change ---
+
+We first test how the metrics respond to spatial translation and scaling (Figs.~\ref{fig:perturbation-translation} and~\ref{fig:perturbation-scaling}). Translation adds the same offset of 0 to 25 pixels to both the x and y coordinates of every event, and scaling contracts or expands the pattern around the calibrated center by factors of 0.90 to 1.20. Both perturbations preserve the timestamps and number of events. Larger offsets and scaling factors further from 1 move the events further from their original positions, so we expect the distances to increase with the magnitude of either change.
+
+Both changes generally produce larger distances as their magnitude increases. SWD responds approximately linearly to both, and its curves for the five recordings closely overlap. Under translation, SWD rises by 0.81 per pixel of offset in every recording, reaching 20.4 at 25 pixels. Under scaling, SWD rises by about 0.9 for each 0.01 change in the scaling factor, reaching 9.1 at 0.90 and 1.10 and 18.2 at 1.20, so contraction and expansion by the same amount give nearly the same distance. At each magnitude, the five recordings differ by less than 1\%.
+
+% To be further reviewed:
+The response of MMD depends on the kernel size. None of the three kernels responds to a translation of 1~pixel, for which SWD already gives 0.81. Their median distance there is zero, meaning that the unbiased estimate is negative in at least half of the windows. For larger offsets, the 3-pixel kernel saturates early. By an offset of 9~pixels it has already reached more than 80\% of its value at 25~pixels, so larger offsets barely change it. The larger kernels keep increasing over more of the range. At the same offset of 9~pixels, the 15-pixel kernel has reached only about half of its value at 25~pixels, and the 75-pixel kernel grows almost in proportion to the offset, giving about five times the distance at 25~pixels as at 5~pixels. Under scaling, the smallest changes also give a median distance of zero for some kernels and recordings. This range of zeros is widest for the 3-pixel kernel, which gives zero for all factors from 0.98 to 1.02 in every recording, while the 75-pixel kernel gives zero only at 1.01, and not at all in F5. Beyond these factors, the distances increase with the size of the change. Of the three kernels, the 75-pixel kernel responds most like SWD, as expected from its choice in Section~\ref{sec:parameters}. It grows almost linearly with both changes, so doubling the scaling change from 1.10 to 1.20 nearly doubles its distance, and its curves for the five recordings closely align over much of the range. At a scaling factor of 1.20 the five recordings differ by less than 1\%, and at an offset of 25~pixels F2 to F5 differ by less than 1\%, with F1 about 3\% lower.
+
+Chamfer distance also increases with both spatial changes, but unlike SWD its value depends on the recording. In every recording the distance grows steadily with the magnitude, from about 2.6 to 2.8 at an offset of 1~pixel to between 19.6 and 26.6 at 25~pixels. The same perturbation, however, gives larger distances in the slower recordings. At every magnitude of both perturbations the distance decreases from F1 to F5, and F1 is 33 to 42\% higher than F5 for offsets of 3~pixels or more, and 27 to 39\% higher for scaling factors outside 0.98 to 1.02. Within the fixed 5~ms window, the faster recordings differ in two ways. They contain more events, on average 7,311 per window in F1 and 30,321 in F5, and the wheel turns further, by about $0.9^\circ$ in F1 and $4.5^\circ$ in F5. Denser sampling can provide closer nearest neighbors, which reduces the Chamfer distance for the same applied perturbation. This is consistent with the dependence on the number of events noted in Section~\ref{sec:chamfer} and offers a plausible explanation for the separation between the curves. However, the number of events and the extent of motion increase together with the rotation speed, so this comparison does not isolate their effects.
+
 
 \subsubsection{Spatial Jitter}
 \label{sec:jitter}

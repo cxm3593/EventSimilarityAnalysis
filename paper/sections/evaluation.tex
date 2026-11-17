@@ -51,6 +51,10 @@ We first report how the metrics respond to the six perturbations described in Se
 \end{figure*}
 % --- End of figure change ---
 
+
+\subsubsection{Spatial Translation and Scaling}
+\label{sec:translation-scaling}
+
 We first test how the metrics respond to spatial translation and scaling (Figs.~\ref{fig:perturbation-translation} and~\ref{fig:perturbation-scaling}). Translation adds the same offset of 0 to 25 pixels to both the x and y coordinates of every event, and scaling contracts or expands the pattern around the calibrated center by factors of 0.90 to 1.20. Both perturbations preserve the timestamps and number of events. Larger offsets and scaling factors further from 1 move the events further from their original positions, so we expect the distances to increase with the magnitude of either change.
 
 Both changes generally produce larger distances as their magnitude increases. SWD responds approximately linearly to both, and its curves for the five recordings closely overlap. Under translation, SWD rises by 0.81 per pixel of offset in every recording, reaching 20.4 at 25 pixels. Under scaling, SWD rises by about 0.9 for each 0.01 change in the scaling factor, reaching 9.1 at 0.90 and 1.10 and 18.2 at 1.20, so contraction and expansion by the same amount give nearly the same distance. At each magnitude, the five recordings differ by less than 1\%.
@@ -63,6 +67,21 @@ Chamfer distance also increases with both spatial changes, but unlike SWD its va
 
 \subsubsection{Spatial Jitter}
 \label{sec:jitter}
+
+Spatial jitter, in contrast to translation and scaling, displaces each event independently (Fig.~\ref{fig:perturbation-jitter}). For every event, a random offset is drawn uniformly along each of the x and y axes, in either direction, up to a maximum jitter that ranges from 0 to 16~pixels. The offsets are not rounded, so jittered events can lie between pixel positions. Timestamps and event counts remain unchanged.
+
+MMD does not respond to weak jitter, and the smaller kernels start responding at lower magnitudes. Up to a maximum jitter of 6~pixels, all three kernels give a median distance of zero in every recording. The 3-pixel kernel responds first, from 7~pixels in F2 to F5 and from 8~pixels in F1. The 15-pixel kernel follows, from 8~pixels in F3 to F5 and from 12~pixels in F1 and F2. The 75-pixel kernel stays at zero over almost the whole range and responds only at 16~pixels in F4 and F5. The kernel size should therefore reflect the scale of the differences to be measured.
+
+SWD, in contrast, responds at the smallest jitter tested. At a maximum jitter of 0.5~pixels it already gives 0.05 to 0.09, while all three MMD kernels give zero. Its distance then increases at a growing rate. Between 1 and 4~pixels it rises by 0.03 to 0.05 per pixel, and between 8 and 16~pixels by about 0.1 per pixel.
+
+Chamfer distance responds as it does under translation, with a rapid initial increase followed by a more gradual rise. Up to a maximum jitter of 1~pixel it rises by about 1.5 per pixel, but between 8 and 16~pixels only by 0.26 to 0.41 per pixel. The rate of increase differs across recordings. At 0.5~pixels all five recordings give the same distance of 0.77, but the curves then separate, and at 16~pixels the distance reaches 10.3 in F1 and 7.0 in F5. As under translation, the distance is largest in the slowest recording and smallest in the fastest, consistent with the denser sampling of the faster recordings discussed in Section~\ref{sec:translation-scaling}.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{paper/Images/perturbation_jitter.png}
+  \caption{Response of the five metrics to spatial jitter in F1 to F5. Each event is displaced independently by a random offset drawn uniformly along each of the x and y axes, in either direction, up to a maximum jitter from 0 to 16~pixels. Each panel shows one metric, and each curve one recording. Each point is the median distance over the 5~ms windows of the first rotation, and vertical lines span the 5th to 95th percentiles of the per-window distances.}
+  \label{fig:perturbation-jitter}
+\end{figure*}
 
 \subsubsection{Subsampling}
 \label{sec:subsampling}

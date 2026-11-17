@@ -63,6 +63,38 @@ where $k$ is the kernel that measures the similarity between two points. The wit
 
 The similarity between points is measured with a Gaussian kernel, whose width sets the scale at which differences between events contribute to MMD. The kernel is $k(u,v)=\exp\!\left(-\|u-v\|^2/(2\sigma^2)\right)$. Instead of setting $\sigma$ directly, we specify the distance $d$ at which the similarity falls to one half, which gives $\sigma = d/\sqrt{2\ln 2} \approx 0.85\,d$. Because the timestamps are scaled by $s$, $d$ applies to space and time alike: with $d = 15$~pixels, a displacement of 15 pixels and a time difference of 630~\textmu s both reduce the similarity to one half. We use three kernels, with $d = 3$, 15, and 75~pixels ($\sigma \approx 2.5$, 12.7, and 63.7~pixels), to compare local detail with broader event structure. Their choice is discussed in Section~\ref{sec:parameters}.
 
+% --- New subsection: MMD for perturbed windows (unbiased perturbation MMD) ---
+\subsection{MMD for Perturbed Windows}
+\label{sec:mmd-perturbation}
+
+For the perturbation study, the cross-set sum of Eq.~\eqref{eq:mmd} needs one further exclusion. Each perturbed window $Y$ is built from its reference window $X$, so most events of $Y$ are perturbed copies of events of $X$. We call an event of $X$ and its own copy in $Y$ a matched pair, and denote the set of matched pairs by $P$. A small perturbation moves each copy only slightly, so a matched pair is more similar than two unrelated events. The matched pairs therefore raise the cross-set average and lower the estimate. When $Y$ is an unchanged copy of $X$, the estimate is lowered by about $2/n$, the same size as the bias that the within-set sums remove but with the opposite sign. Without any perturbation, $Y$ is identical to $X$ and the true MMD is zero, yet Eq.~\eqref{eq:mmd} is negative in every window of all five recordings, by $57$ to $288\times10^{-6}$ on average. At small perturbations this shift outweighs the actual difference, and the reported distance becomes zero (Fig.~\ref{fig:mmd-estimators}).
+
+We therefore exclude the matched pairs from the cross-set sum,
+\begin{equation}
+\begin{split}
+  \widehat{\mathrm{MMD}}_{u,P}^{\,2}(X,Y) = {}& \frac{1}{m(m-1)} \sum_{i \ne i'} k(u_i,u_{i'}) \\
+  &+ \frac{1}{n(n-1)} \sum_{j \ne j'} k(v_j,v_{j'}) \\
+  &- \frac{2}{mn-|P|} \sum_{(i,j) \notin P} k(u_i,v_j),
+\end{split}
+\label{eq:mmd-perturbation}
+\end{equation}
+which we refer to as the unbiased perturbation MMD. The matched pairs are known from how each perturbation builds $Y$, so they do not need to be searched for. Translation, scaling and jitter move every event of $X$ in place, so each event is matched with its moved copy. Subsampling matches each kept event with its source, and uniform noise matches the original events while the added noise events remain unmatched. For temporal offset, $Y$ is a later window of the same recording, which shares events with $X$ only at offsets shorter than the window length, at most $2^\circ$ in our recordings. When no pairs are matched, Eq.~\eqref{eq:mmd-perturbation} equals Eq.~\eqref{eq:mmd}, so the comparisons between independent windows, such as the noise floor and the simulator comparisons, are unchanged. Without any perturbation, Eq.~\eqref{eq:mmd-perturbation} gives exactly zero, and under subsampling, which keeps the distribution unchanged, it is negative in 46 to 62\% of the F1 windows, as expected for an unbiased estimate of zero.
+
+% The PNG is exported from
+% output/perturbation/unbiased_perturbation_mmd_20261116_191351/figures/mmd_estimator_comparison_median.html
+% (plotly toolbar, "Download plot as a png"). Until it is added, a placeholder box is shown.
+\begin{figure*}[t]
+  \centering
+  \IfFileExists{paper/Images/perturbation_mmd_estimators.png}{%
+    \includegraphics[width=\textwidth]{paper/Images/perturbation_mmd_estimators.png}%
+  }{%
+    \fbox{\parbox[c][0.3\textwidth][c]{0.95\textwidth}{\centering Missing: paper/Images/perturbation\_mmd\_estimators.png}}%
+  }
+  \caption{Response of MMD to spatial translation (top) and spatial jitter (bottom) in F1 to F5, with the standard estimator of Eq.~\eqref{eq:mmd} and the unbiased perturbation estimator of Eq.~\eqref{eq:mmd-perturbation}. Each pair of adjacent panels shows one kernel, with the standard estimator on the left and the unbiased perturbation estimator on the right, and shares the same vertical range. Each curve shows one recording, and each point is the median distance over the 5~ms windows of the first rotation. For the standard estimator, dotted segments show the median signed distance, $\operatorname{sign}(\widehat{\mathrm{MMD}}_u^{\,2})\sqrt{|\widehat{\mathrm{MMD}}_u^{\,2}|}$, where it is below zero.}
+  \label{fig:mmd-estimators}
+\end{figure*}
+% --- End of new subsection ---
+
 \subsection{Sliced Wasserstein Distance}
 \label{sec:swd}
 
